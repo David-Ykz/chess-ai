@@ -16,6 +16,6 @@ class EvalMove {
         EvalMove(Move m, int e, int s) : move(m), evaluation(e), score(s) {}
         EvalMove& operator=(const EvalMove&) = default;
         bool operator<(const EvalMove& e) const {
-            return score < e.score;
+            return score > e.score;
         }
 };

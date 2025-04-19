@@ -1,7 +1,7 @@
 #pragma once
 #include "eval_move.h"
 #include <limits>
-#include <queue>
+#include <algorithm>
 
 class ChessAI {
     private:
@@ -25,7 +25,7 @@ class ChessAI {
 
         template <Color Us>
         vector<EvalMove> orderMoves(MoveList<Us>& legalMoves, bool filterCaptures) {
-            priority_queue<EvalMove> pq;
+            vector<EvalMove> orderedMoves;
             for (Move move : legalMoves) {
                 int moveScore = 0;
                 if (move.is_capture()) {
@@ -33,18 +33,13 @@ class ChessAI {
                     Piece to = position.at(move.to());
                     moveScore = abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from])/10;
                     EvalMove evalMove = EvalMove(move, 0, moveScore);
-                    pq.push(evalMove);
+                    orderedMoves.push_back(evalMove);
                 } else if (!filterCaptures) {
                     EvalMove evalMove = EvalMove(move, 0, moveScore);
-                    pq.push(evalMove);
+                    orderedMoves.push_back(evalMove);
                 }
             }
-            vector<EvalMove> orderedMoves;
-            while (!pq.empty()) {
-                orderedMoves.push_back(pq.top());
-                pq.pop();
-            }
-
+            sort(orderedMoves.begin(), orderedMoves.end());
             return orderedMoves;
         }
 
@@ -66,7 +61,8 @@ class ChessAI {
 
             constexpr int startingEval = (Us == WHITE) ? numeric_limits<int>::min() : numeric_limits<int>::max();
             EvalMove bestMove = EvalMove(startingEval);
-            for (EvalMove evalMove : orderMoves(legalMoves, false)) {
+            vector<EvalMove> orderedMoves = orderMoves(legalMoves, false);
+            for (EvalMove evalMove : orderedMoves) {
                 position.play<Us>(evalMove.move);
                 evalMove.evaluation = minimax<~Us>(depth - 1, alpha, beta).evaluation;
                 position.undo<Us>(evalMove.move);
@@ -107,7 +103,8 @@ class ChessAI {
 
             MoveList<Us> legalMoves(position);
 
-            for (EvalMove evalMove : orderMoves(legalMoves, true)) {
+            vector<EvalMove> orderedMoves = orderMoves(legalMoves, true);
+            for (EvalMove evalMove : orderedMoves) {
                 position.play<Us>(evalMove.move);
                 evalMove.evaluation = quiescenceSearch<~Us>(alpha, beta).evaluation;
                 position.undo<Us>(evalMove.move);

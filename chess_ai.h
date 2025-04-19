@@ -2,6 +2,7 @@
 #include "eval_move.h"
 #include <limits>
 #include <algorithm>
+#include <chrono>
 
 class ChessAI {
     private:
@@ -85,6 +86,7 @@ class ChessAI {
             }
             return bestMove;        
         }
+        
         template <Color Us>
         EvalMove quiescenceSearch(int alpha, int beta) {
             ++numQuiescenceSearches;
@@ -127,33 +129,42 @@ class ChessAI {
             }
             return bestMove;        
         }
+        
         template <Color Us>
         bool isDraw(MoveList<Us>& legalMoves) {
             return legalMoves.size() == 0;
         }
+        
         template <Color Us>
         bool isMate(MoveList<Us>& legalMoves) {
             return legalMoves.size() == 0 && position.in_check<Us>();
         }
+        
         int evaluate() {
             int evaluation = 0;
             for (int i = WHITE_PAWN; i < NO_PIECE; ++i) {
                 Piece piece = static_cast<Piece>(i);
                 evaluation += pop_count(position.bitboard_of(piece)) * PIECE_VALUES[i];
             }
-            // evaluation += pop_count(position.bitboard_of(WHITE_PAWN)) * PAWN_VALUE;
-            // evaluation += pop_count(position.bitboard_of(WHITE_KNIGHT)) * KNIGHT_VALUE;
-            // evaluation += pop_count(position.bitboard_of(WHITE_BISHOP)) * BISHOP_VALUE;
-            // evaluation += pop_count(position.bitboard_of(WHITE_ROOK)) * ROOK_VALUE;
-            // evaluation += pop_count(position.bitboard_of(WHITE_QUEEN)) * QUEEN_VALUE;
-        
-            // evaluation += pop_count(position.bitboard_of(BLACK_PAWN)) * -PAWN_VALUE;
-            // evaluation += pop_count(position.bitboard_of(BLACK_KNIGHT)) * -KNIGHT_VALUE;
-            // evaluation += pop_count(position.bitboard_of(BLACK_BISHOP)) * -BISHOP_VALUE;
-            // evaluation += pop_count(position.bitboard_of(BLACK_ROOK)) * -ROOK_VALUE;
-            // evaluation += pop_count(position.bitboard_of(BLACK_QUEEN)) * -QUEEN_VALUE;
         
             return evaluation;
         }
 
+        void makeMove() {
+            Color turn = position.turn();
+            EvalMove evalMove = EvalMove(0);
+            chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+            if (turn == WHITE) {
+                evalMove = minimax<WHITE>(depthToSearch, numeric_limits<int>::min(), numeric_limits<int>::max());
+                position.play<WHITE>(evalMove.move); 
+            } else {
+                evalMove = minimax<BLACK>(depthToSearch, numeric_limits<int>::min(), numeric_limits<int>::max());
+                position.play<BLACK>(evalMove.move);
+            }
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            auto diff = end - begin;
+            cout << evalMove.move << endl;
+            printDebug();
+            cout << "Time taken: " << chrono::duration_cast<std::chrono::microseconds>(diff).count()/1000000.0 << " seconds" << endl;
+        }
 };

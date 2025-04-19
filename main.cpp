@@ -1,7 +1,6 @@
 #include "chess_ai.h"
 
 #include <iostream>
-#include <chrono>
 
 // g++ -O3 -march=znver3 -mtune=znver3 -flto -o main main.cpp ./surge/src/types.cpp ./surge/src/position.cpp ./surge/src/tables.cpp chess_ai.cpp
 
@@ -63,14 +62,7 @@ int main() {
 	Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
 	std::cout << p;
 	ChessAI ai = ChessAI(p);
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-	EvalMove evalMove = ai.minimax<WHITE>(5, numeric_limits<int>::min(), numeric_limits<int>::max());
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	auto diff = end - begin;
-	cout << evalMove.move << endl;
-	ai.printDebug();
-	cout << "Time difference = "
-		<< chrono::duration_cast<std::chrono::microseconds>(diff).count() << " [microseconds]\n";
+	ai.makeMove();
 	return 0;
 }
 

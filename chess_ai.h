@@ -24,18 +24,27 @@ class ChessAI {
         }
 
         template <Color Us>
-        priority_queue<EvalMove> orderMoves(MoveList<Us>& legalMoves) {
-            priority_queue<EvalMove> orderedMoves;
+        vector<EvalMove> orderMoves(MoveList<Us>& legalMoves, bool filterCaptures) {
+            priority_queue<EvalMove> pq;
             for (Move move : legalMoves) {
                 int moveScore = 0;
                 if (move.is_capture()) {
                     Piece from = position.at(move.from());
                     Piece to = position.at(move.to());
                     moveScore = abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from])/10;
+                    EvalMove evalMove = EvalMove(move, 0, moveScore);
+                    pq.push(evalMove);
+                } else if (!filterCaptures) {
+                    EvalMove evalMove = EvalMove(move, 0, moveScore);
+                    pq.push(evalMove);
                 }
-                EvalMove evalMove = EvalMove(move, 0, moveScore);
-                orderedMoves.push(evalMove);
             }
+            vector<EvalMove> orderedMoves;
+            while (!pq.empty()) {
+                orderedMoves.push_back(pq.top());
+                pq.pop();
+            }
+
             return orderedMoves;
         }
 
@@ -57,21 +66,21 @@ class ChessAI {
 
             constexpr int startingEval = (Us == WHITE) ? numeric_limits<int>::min() : numeric_limits<int>::max();
             EvalMove bestMove = EvalMove(startingEval);
-            for (Move move : legalMoves) {
-                position.play<Us>(move);
-                EvalMove newMove = EvalMove(move, minimax<~Us>(depth - 1, alpha, beta).evaluation, 0);
-                position.undo<Us>(move);
+            for (EvalMove evalMove : orderMoves(legalMoves, false)) {
+                position.play<Us>(evalMove.move);
+                evalMove.evaluation = minimax<~Us>(depth - 1, alpha, beta).evaluation;
+                position.undo<Us>(evalMove.move);
             
                 if constexpr (Us == WHITE) {
-                    if (newMove.evaluation > bestMove.evaluation) {
-                        bestMove = newMove;
+                    if (evalMove.evaluation > bestMove.evaluation) {
+                        bestMove = evalMove;
                     }
-                    alpha = max(alpha, newMove.evaluation);
+                    alpha = max(alpha, evalMove.evaluation);
                 } else {
-                    if (newMove.evaluation < bestMove.evaluation) {
-                        bestMove = newMove;
+                    if (evalMove.evaluation < bestMove.evaluation) {
+                        bestMove = evalMove;
                     }
-                    beta = min(beta, newMove.evaluation);
+                    beta = min(beta, evalMove.evaluation);
                 }
                 if (beta <= alpha) {
                     ++numPruned;
@@ -98,27 +107,25 @@ class ChessAI {
 
             MoveList<Us> legalMoves(position);
 
-            for (Move move : legalMoves) {
-                if (move.is_capture()) {
-                    position.play<Us>(move);
-                    EvalMove newMove = EvalMove(move, quiescenceSearch<~Us>(alpha, beta).evaluation, 0);
-                    position.undo<Us>(move);
-                
-                    if constexpr (Us == WHITE) {
-                        if (newMove.evaluation > bestMove.evaluation) {
-                            bestMove = newMove;
-                        }
-                        alpha = max(alpha, newMove.evaluation);
-                    } else {
-                        if (newMove.evaluation < bestMove.evaluation) {
-                            bestMove = newMove;
-                        }
-                        beta = min(beta, newMove.evaluation);
+            for (EvalMove evalMove : orderMoves(legalMoves, true)) {
+                position.play<Us>(evalMove.move);
+                evalMove.evaluation = quiescenceSearch<~Us>(alpha, beta).evaluation;
+                position.undo<Us>(evalMove.move);
+            
+                if constexpr (Us == WHITE) {
+                    if (evalMove.evaluation > bestMove.evaluation) {
+                        bestMove = evalMove;
                     }
-                    if (beta <= alpha) {
-                        ++numPruned;
-                        return bestMove;
+                    alpha = max(alpha, evalMove.evaluation);
+                } else {
+                    if (evalMove.evaluation < bestMove.evaluation) {
+                        bestMove = evalMove;
                     }
+                    beta = min(beta, evalMove.evaluation);
+                }
+                if (beta <= alpha) {
+                    ++numPruned;
+                    return bestMove;
                 }
             }
             return bestMove;        

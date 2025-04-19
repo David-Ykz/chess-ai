@@ -15,8 +15,7 @@ class EvalMove {
         EvalMove(int e) : evaluation(e) {}
         EvalMove(Move m, int e, int s) : move(m), evaluation(e), score(s) {}
         EvalMove& operator=(const EvalMove&) = default;
-        bool operator<(const EvalMove& e) {
-            return evaluation < e.evaluation; // highest score = highest priority
+        bool operator<(const EvalMove& e) const {
+            return score < e.score;
         }
-
 };

@@ -1,5 +1,6 @@
 #pragma once
 #include "eval_move.h"
+#include "pst.h"
 #include <limits>
 #include <algorithm>
 #include <chrono>
@@ -7,12 +8,11 @@
 class ChessAI {
     private:
         Position& position;
+        PST tables;
 
         int numMinimaxSearches = 0;
         int numQuiescenceSearches = 0;
         int numPruned = 0;
-
-        int depthToSearch = 5;
 
         const int CHECKMATE_SCORE = 10000;
         int PIECE_VALUES[14] = {100, 300, 300, 500, 900, 0, 0, 0, -100, -300, -300, -500, -900, 0};
@@ -35,7 +35,10 @@ class ChessAI {
                     moveScore = abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from])/10;
                     EvalMove evalMove = EvalMove(move, 0, moveScore);
                     orderedMoves.push_back(evalMove);
-                } else if (!filterCaptures) {
+                } else if (!filterCaptures) {	
+                    if ((pawn_attacks<~Us>(position.bitboard_of(~Us, PAWN)) & SQUARE_BB[move.to()]) > 0) {
+                        moveScore -= 100;
+                    }
                     EvalMove evalMove = EvalMove(move, 0, moveScore);
                     orderedMoves.push_back(evalMove);
                 }
@@ -47,21 +50,24 @@ class ChessAI {
         template <Color Us>
         EvalMove minimax(int depth, int alpha, int beta) {
             ++numMinimaxSearches;
+
+            constexpr int startingEval = (Us == WHITE) ? numeric_limits<int>::min() : numeric_limits<int>::max();
+            EvalMove bestMove = EvalMove(startingEval);
+            
             MoveList<Us> legalMoves(position);
-            if (isDraw<Us>(legalMoves)) {
-                return EvalMove(0);
-            }
             if (isMate<Us>(legalMoves)) {
                 constexpr int sign = (Us == Color::WHITE) ? 1 : -1;
-                return (CHECKMATE_SCORE - depthToSearch) * -sign;
+                return (CHECKMATE_SCORE + depth * 1000) * -sign;
+            }
+
+            if (isDraw<Us>(legalMoves)) {
+                return EvalMove(0);
             }
         
             if (depth == 0) {
                 return quiescenceSearch<Us>(alpha, beta);
             }
 
-            constexpr int startingEval = (Us == WHITE) ? numeric_limits<int>::min() : numeric_limits<int>::max();
-            EvalMove bestMove = EvalMove(startingEval);
             vector<EvalMove> orderedMoves = orderMoves(legalMoves, false);
             for (EvalMove evalMove : orderedMoves) {
                 position.play<Us>(evalMove.move);
@@ -137,33 +143,59 @@ class ChessAI {
         
         template <Color Us>
         bool isMate(MoveList<Us>& legalMoves) {
+            if (legalMoves.size() == 0 && position.in_check<Us>()) {
+            }
             return legalMoves.size() == 0 && position.in_check<Us>();
         }
+
         
         int evaluate() {
             int evaluation = 0;
+
             for (int i = WHITE_PAWN; i < NO_PIECE; ++i) {
                 Piece piece = static_cast<Piece>(i);
-                evaluation += pop_count(position.bitboard_of(piece)) * PIECE_VALUES[i];
+                Bitboard bitboard = position.bitboard_of(piece);
+                while (bitboard) {
+                    int square = __builtin_ctzll(bitboard);
+                    bitboard &= bitboard - 1;
+                    evaluation += PIECE_VALUES[i] + tables.pst[i][square];
+                }
+
             }
-        
+
+            // for (int i = WHITE_PAWN; i < NO_PIECE; ++i) {
+            //     Piece piece = static_cast<Piece>(i);
+            //     Bitboard bitboard = position.bitboard_of(piece);
+            //     while (bitboard) {
+            //         int square = __builtin_ctzll(bitboard);
+            //         bitboard &= bitboard - 1;
+            //         evaluation += PIECE_VALUES[i] + 
+            //     }
+            //     evaluation += pop_count(position.bitboard_of(piece)) * PIECE_VALUES[i];
+            //     __builtin_ctzll
+
+//            }
             return evaluation;
         }
 
         void makeMove() {
+            numMinimaxSearches = 0;
+            numQuiescenceSearches = 0;
+            numPruned = 0;
+        
             Color turn = position.turn();
             EvalMove evalMove = EvalMove(0);
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
             if (turn == WHITE) {
-                evalMove = minimax<WHITE>(depthToSearch, numeric_limits<int>::min(), numeric_limits<int>::max());
+                evalMove = minimax<WHITE>(5, numeric_limits<int>::min(), numeric_limits<int>::max());
                 position.play<WHITE>(evalMove.move); 
             } else {
-                evalMove = minimax<BLACK>(depthToSearch, numeric_limits<int>::min(), numeric_limits<int>::max());
+                evalMove = minimax<BLACK>(3, numeric_limits<int>::min(), numeric_limits<int>::max());
                 position.play<BLACK>(evalMove.move);
             }
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             auto diff = end - begin;
-            cout << evalMove.move << endl;
+            cout << evalMove.move << " - " << evalMove.evaluation << endl;
             printDebug();
             cout << "Time taken: " << chrono::duration_cast<std::chrono::microseconds>(diff).count()/1000000.0 << " seconds" << endl;
         }

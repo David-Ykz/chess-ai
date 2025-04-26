@@ -1,5 +1,6 @@
 #pragma once
 #include "eval_move.h"
+#include "transposition_table.h"
 #include "pst.h"
 #include <limits>
 #include <algorithm>
@@ -9,19 +10,25 @@ class ChessAI {
     private:
         Position& position;
         PST tables;
+        TranspositionTable transpositionTable;
 
         int numMinimaxSearches = 0;
+        int numNegamaxSearches = 0;
         int numQuiescenceSearches = 0;
         int numPruned = 0;
+        int numTranspositionTableHits = 0;
 
         const int CHECKMATE_SCORE = 64000;
+        const int MAX_NUM_EXTENSIONS = 16;
         int PIECE_VALUES[14] = {100, 300, 300, 500, 900, 0, 0, 0, -100, -300, -300, -500, -900, 0};
     public:
-        ChessAI(Position& p) : position(p) {}
+        ChessAI(Position& p) : position(p), transpositionTable(1000000) {}
         void printDebug() {
-            cout << "Number of minimax searches: " << numMinimaxSearches << endl;
+            cout << "Number of negamax searches: " << numNegamaxSearches << endl;
             cout << "Number of quiescence searches: " << numQuiescenceSearches << endl;
             cout << "Number of nodes pruned: " << numPruned << endl;
+            cout << "Number of transposition table hits: " << numTranspositionTableHits << endl;
+            transpositionTable.print();
         }
         template<Color Us>
         vector<pair<int, Move>> orderMoves(MoveList<Us>& legalMoves, bool filterCaptures) {
@@ -37,11 +44,11 @@ class ChessAI {
                     if ((pawn_attacks<~Us>(position.bitboard_of(~Us, PAWN)) & SQUARE_BB[move.to()]) > 0) {
                         moveScore -= 100;
                     }
-                    position.play<Us>(move);
-                    if (position.in_check<~Us>()) {
-                        moveScore += 10000;
-                    }
-                    position.undo<Us>(move);
+                    // position.play<Us>(move);
+                    // if (position.in_check<~Us>()) {
+                    //     moveScore += 10000;
+                    // }
+                    // position.undo<Us>(move);
                     orderedMoves.push_back({moveScore, move});
                 }
             }
@@ -51,6 +58,117 @@ class ChessAI {
             });
             return orderedMoves;
    
+        }
+
+        template<Color Us>
+        int negamaxSearch(int ply, int depth, int alpha, int beta, int numExtensions) {
+            if (ply > 0) {
+                // TODO: implement repetition table
+                // if (repetitionTable.contains(position.get_hash())) { return 0 };
+            }
+            alpha = max(alpha, -CHECKMATE_SCORE + ply);
+            beta = min(beta, CHECKMATE_SCORE - ply);
+            if (alpha >= beta) {
+                return alpha;
+            }
+
+            if (depth == 0) {
+                return quiescenceSearch<Us>(alpha, beta);
+            }
+
+            ++numNegamaxSearches;
+            MoveList<Us> legalMoves(position);
+            if (legalMoves.size() == 0) {
+                if (position.in_check<Us>()) { // Checkmate
+                    return -(CHECKMATE_SCORE - ply);
+                } else { // Stalemate
+                    return 0;
+                }
+            }
+
+            if (ply > 0) {
+                // TODO: add repetition table logic
+                // repetitionTable.store(position.get_hash(), prevWasCapture, prevWasPawnMove);
+            }
+
+            vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, false);
+//            for (const auto& orderedMove : orderedMoves) {
+    //                Move move = orderedMove.second;
+            for (int i = 0; i < orderedMoves.size(); i++) {
+                Move move = orderedMoves[i].second;
+                int extensions = 0;
+                position.play<Us>(move);
+                // If the move is interesting, look 1 ply further
+                // Note: this increases search times drastically, but should be worth it
+                if (numExtensions < MAX_NUM_EXTENSIONS) {
+                    if (position.in_check<~Us>()) {
+                        extensions = 1;
+                    }
+                }
+                int eval = 0;
+                bool needsFullSearch = true;
+                // Search moves with a low move score at a lower depth and tighter window
+                if (extensions == 0 && depth >= 3 && i >= 5 && !move.is_capture()) {
+                    eval = -negamaxSearch<~Us>(ply + 1, depth - 2, -alpha - 1, -alpha, numExtensions);
+                    needsFullSearch = eval > alpha;
+                }
+                if (needsFullSearch) {
+                    eval = -negamaxSearch<~Us>(ply + 1, depth - 1 + extensions, -beta, -alpha, numExtensions + extensions);
+                }
+                position.undo<Us>(move);
+
+                if (eval >= beta) {
+                    // TODO: add bounds for transposition table
+                    // transpositionTable.store(position.get_hash(), depth, ply, beta, LOWER_BOUND, move);
+                    
+                    // TODO: killer moves and history heuristic
+
+                    // repetitionTable.TryPop() ???
+                    ++numPruned;
+                    return beta;
+                }
+                if (eval > alpha) {
+                    alpha = eval;
+
+                }
+            }
+            if (ply > 0) {
+                // repetitionTable.TryPop();
+            }
+            // TODO: transposition table store logic
+
+            return alpha;
+            
+        }
+
+        template<Color Us>
+        int quiescenceSearch(int alpha, int beta) {
+            ++numQuiescenceSearches;
+            int eval = evaluate();
+            if (eval >= beta) {
+                ++numPruned;
+                return beta;
+            }
+            if (eval > alpha) {
+                alpha = eval;
+            }
+            MoveList<Us> legalMoves(position);
+            vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, true);
+            for (int i = 0; i < orderedMoves.size(); i++) {
+                Move move = orderedMoves[i].second;
+                position.play<Us>(move);
+                eval = -quiescenceSearch<~Us>(-beta, -alpha);
+                position.undo<Us>(move);
+
+                if (eval >= beta) {
+                    ++numPruned;
+                    return beta;
+                }
+                if (eval > alpha) {
+                    alpha = eval;
+                }
+            }
+            return alpha;
         }
 
         template <Color Us>
@@ -100,6 +218,20 @@ class ChessAI {
                 return 0;
             }
             
+            const uint64_t hash = position.get_hash();
+            if (transpositionTable.contains(hash)) {
+                TTEntry entry = transpositionTable.get(hash);
+                if (entry.depth >= depth) {
+                    ++numTranspositionTableHits;
+                    if constexpr (Us == WHITE) {
+                        return -entry.eval;
+                    } else {
+                        return entry.eval;
+                    }
+                }
+            }
+
+            
             if (depth == 0) {
                 ++numQuiescenceSearches;
                 return quiescent<Us>(alpha, beta);
@@ -112,32 +244,25 @@ class ChessAI {
                 position.play<Us>(move);
                 int score = -search<~Us>(depth - 1, -beta, -alpha);
                 position.undo<Us>(move);
+                if (score >= beta) {
+                    ++numPruned;
+                    return beta;
+                }
+
                 if (score > bestValue) {
                     bestValue = score;
-                    if (score > alpha) {
+                    // if (score >= beta) {
+                    //     ++numPruned;
+                    //     return bestValue;
+                    // }
+                        if (score > alpha) {
                         alpha = score;
-                    }
-                    if (score >= beta) {
-                        ++numPruned;
-                        return bestValue;
                     }
                 }
             }
+            transpositionTable.store(hash, depth, bestValue, -1); // We don't store bestMove here since it's not needed for exact evaluation
             return bestValue;
         }
-
-        template <Color Us>
-        bool isDraw(MoveList<Us>& legalMoves) {
-            return legalMoves.size() == 0;
-        }
-        
-        template <Color Us>
-        bool isMate(MoveList<Us>& legalMoves) {
-            if (legalMoves.size() == 0 && position.in_check<Us>()) {
-            }
-            return legalMoves.size() == 0 && position.in_check<Us>();
-        }
-
         
         int evaluate() {
             int evaluation = 0;
@@ -168,9 +293,7 @@ class ChessAI {
             int evaluation;
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
             if (turn == WHITE) {
-                cout << "start" << endl;
-                evaluation = search<WHITE>(5, -64000, 64000);
-                cout << "end" << endl;
+                evaluation = negamaxSearch<WHITE>(0, 7, -64000, 64000, 0);
 
             } else {
                 cout << "start" << endl;

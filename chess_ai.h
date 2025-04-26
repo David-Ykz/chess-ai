@@ -12,11 +12,11 @@ class ChessAI {
         PST tables;
         TranspositionTable transpositionTable;
 
-        int numMinimaxSearches = 0;
         int numNegamaxSearches = 0;
         int numQuiescenceSearches = 0;
         int numPruned = 0;
         int numTranspositionTableHits = 0;
+        int maxDepthSearched = 0;
 
         const int CHECKMATE_SCORE = 64000;
         const int MAX_NUM_EXTENSIONS = 16;
@@ -29,6 +29,7 @@ class ChessAI {
             cout << "Number of nodes pruned: " << numPruned << endl;
             cout << "Number of transposition table hits: " << numTranspositionTableHits << endl;
             transpositionTable.print();
+            cout << "Max depth searched: " << maxDepthSearched << endl;
         }
         template<Color Us>
         vector<pair<int, Move>> orderMoves(MoveList<Us>& legalMoves, bool filterCaptures) {
@@ -62,6 +63,9 @@ class ChessAI {
 
         template<Color Us>
         int negamaxSearch(int ply, int depth, int alpha, int beta, int numExtensions) {
+            if (ply > maxDepthSearched) {
+                maxDepthSearched = ply;
+            }
             if (ply > 0) {
                 // TODO: implement repetition table
                 // if (repetitionTable.contains(position.get_hash())) { return 0 };
@@ -108,7 +112,7 @@ class ChessAI {
                 int eval = 0;
                 bool needsFullSearch = true;
                 // Search moves with a low move score at a lower depth and tighter window
-                if (extensions == 0 && depth >= 3 && i >= 5 && !move.is_capture()) {
+                if (extensions == 0 && depth >= 3 && i >= 3 && !move.is_capture()) {
                     eval = -negamaxSearch<~Us>(ply + 1, depth - 2, -alpha - 1, -alpha, numExtensions);
                     needsFullSearch = eval > alpha;
                 }
@@ -237,7 +241,6 @@ class ChessAI {
                 return quiescent<Us>(alpha, beta);
             }
             int bestValue = -64000;
-            ++numMinimaxSearches;
             vector<pair<int, Move>> orderedMoves = orderMoves(legalMoves, false);
             for (const auto& orderedMove : orderedMoves) {
                 const Move move = orderedMove.second;
@@ -285,15 +288,17 @@ class ChessAI {
         }
 
         void makeMove() {
-            numMinimaxSearches = 0;
+            numNegamaxSearches = 0;
             numQuiescenceSearches = 0;
             numPruned = 0;
+            numTranspositionTableHits = 0;
+            maxDepthSearched = 0;
         
             Color turn = position.turn();
             int evaluation;
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
             if (turn == WHITE) {
-                evaluation = negamaxSearch<WHITE>(0, 7, -64000, 64000, 0);
+                evaluation = negamaxSearch<WHITE>(0, 18, -64000, 64000, 0);
 
             } else {
                 cout << "start" << endl;

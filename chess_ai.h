@@ -46,10 +46,14 @@ class ChessAI {
             vector<pair<int, Move>> orderedMoves;
             for (Move move : legalMoves) {
                 int moveScore = 0;
+                if (ply == 0 && !bestMovePerIteration.empty() && bestMovePerIteration[bestMovePerIteration.size() - 1] == move) {
+                    moveScore += 10000;
+                }
+
                 if (move.is_capture()) {
                     Piece from = position.at(move.from());
                     Piece to = position.at(move.to());
-                    moveScore = 10 * abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from]);
+                    moveScore += 10 * abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from]);
                     orderedMoves.push_back({moveScore, move});
                 } else if (!filterCaptures) {
                     if ((pawn_attacks<~Us>(position.bitboard_of(~Us, PAWN)) & SQUARE_BB[move.to()]) > 0) {
@@ -96,7 +100,11 @@ class ChessAI {
                         return storedEval;
                     }
                 } else if (bound == UPPER_BOUND && storedEval <= alpha) {
-                    return storedEval;
+                    if constexpr (Us == WHITE) {
+                        return -storedEval;
+                    } else {
+                        return storedEval;
+                    }
                 } else if (bound == LOWER_BOUND && storedEval >= beta) {
                     return storedEval;
                 }
@@ -153,7 +161,6 @@ class ChessAI {
                         killerMoves[ply][1] = killerMoves[ply][0];
                         killerMoves[ply][0] = move;
                     }
-                    // TODO: killer moves and history heuristic
 
                     // repetitionTable.TryPop() ???
                     ++numPruned;
@@ -228,7 +235,6 @@ class ChessAI {
 
         template<Color Us>
         void searchMoves(int depth, int alpha, int beta) {
-            transpositionTable.clear();
             int evaluation;
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
             evaluation = negamaxSearch<Us>(0, depth, alpha, beta, 0);
@@ -244,13 +250,34 @@ class ChessAI {
         void iterativeDeepening() {
             const double MAX_TIME_LIMIT = 1.0;
             std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-            for (int i = 9; i < 10; i++) {
+            for (int i = 1; i < 128; i++) {
                 std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
                 auto diff = end - start;
                 if (chrono::duration_cast<std::chrono::microseconds>(diff).count()/1000000.0 > MAX_TIME_LIMIT) {
                     return;
                 }
-                searchMoves<Us>(i, -64000, 64000);
+                if (!evaluationPerIteration.empty()) {
+                    bool validSearch = false;
+                    for (int j = 32; j <= 256; j <<= 1) {
+                        int score = evaluationPerIteration[evaluationPerIteration.size() - 1];
+                        int alpha = score - j;
+                        int beta = score + j;
+                        searchMoves<Us>(i, alpha, beta);
+                        score = evaluationPerIteration[evaluationPerIteration.size() - 1];
+                        if (alpha < score && score < beta) {
+                            validSearch = true;
+                            break;
+                        }
+                        evaluationPerIteration.pop_back();
+                        timeTakenPerIteration.pop_back();
+                        bestMovePerIteration.pop_back();
+                    }
+                    if (!validSearch) {
+                        searchMoves<Us>(i, -64000, 64000);
+                    }
+                } else {
+                    searchMoves<Us>(i, -64000, 64000);
+                }
             }
         }
 

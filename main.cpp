@@ -57,12 +57,12 @@ int main() {
 
 	//gk call test_perft()
 //	test_perft();
-	string gameFen = "r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -";
+	string gameFen = "6k1/2qr1p2/r5p1/p3p1QR/b1pbP3/BP6/2P4P/1K3R2 w - -";
 
 
 	Position p;
 //	Position::set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", p);
-Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
+// Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
 //Position::set("r3k2r/1p3ppp/1pp1p3/5b2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w -  -", p);
 //	Position::set("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - -", p);
 //	Position::set("r3r1k1/ppq1bpp1/3p4/2p1nbP1/8/P1NP4/BPP1Q3/R2K3R w - -", p);
@@ -73,10 +73,6 @@ Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
 //	Position::set("6k1/2qr1p2/r5p1/p3p1QR/b1pbP3/BP6/2P4P/1K3R2 w - -", p);
 //	Position::set("1k6/8/1K6/8/8/8/8/5R2 w - -", p);
 //	Position::set("8/8/8/8/8/2k5/1q6/K7 w - -", p);
-
-	std::cout << p;
-
-
 
 	while (true) {
 		Position p;
@@ -95,10 +91,8 @@ Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
 }
 
 
-// create match manager
-// implement transposition table
-// add iterative deepening
-// add basic pst?
-// figure out how to pass board into ai
-// figure out training data
-// pv table?
+// null move pruning
+// delta pruning
+// futility pruning
+// aspiration windows
+// using best move from prev iteration for move ordering

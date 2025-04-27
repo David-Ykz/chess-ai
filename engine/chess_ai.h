@@ -285,16 +285,21 @@ class ChessAI {
 
         template<Color Us>
         Move findMove() {
+            bool debug = false;
             timeTakenPerIteration.clear();
             evaluationPerIteration.clear();
             bestMovePerIteration.clear();
             iterativeDeepening<Us>();
-            for (int i = 0; i < timeTakenPerIteration.size(); i++) {
-                cout << "Iteration " << i << " --";
-                cout << " time taken: " << timeTakenPerIteration[i];
-                cout << " | evaluation: " << evaluationPerIteration[i];
-                cout << " | best move: " << bestMovePerIteration[i];
-                cout << endl;
+            if (debug) {
+                for (int i = 0; i < timeTakenPerIteration.size(); i++) {
+                    cout << "Iteration " << i << " --";
+                    cout << " time taken: " << timeTakenPerIteration[i];
+                    cout << " | evaluation: " << evaluationPerIteration[i];
+                    cout << " | best move: " << bestMovePerIteration[i];
+                    cout << endl;
+                }    
+//            } else {
+//                cout << bestMovePerIteration[bestMovePerIteration.size() - 1] << endl;
             }
             return bestMovePerIteration[bestMovePerIteration.size() - 1];
         }

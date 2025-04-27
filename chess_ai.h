@@ -11,6 +11,7 @@ class ChessAI {
         Position& position;
         PST tables;
         TranspositionTable transpositionTable;
+        Move killerMoves[64][2];
 
         int numNegamaxSearches = 0;
         int numQuiescenceSearches = 0;
@@ -31,7 +32,7 @@ class ChessAI {
             cout << "Max depth searched: " << maxDepthSearched << endl;
         }
         template<Color Us>
-        vector<pair<int, Move>> orderMoves(MoveList<Us>& legalMoves, bool filterCaptures) {
+        vector<pair<int, Move>> orderMoves(MoveList<Us>& legalMoves, int ply, bool filterCaptures) {
             vector<pair<int, Move>> orderedMoves;
             for (Move move : legalMoves) {
                 int moveScore = 0;
@@ -43,6 +44,9 @@ class ChessAI {
                 } else if (!filterCaptures) {
                     if ((pawn_attacks<~Us>(position.bitboard_of(~Us, PAWN)) & SQUARE_BB[move.to()]) > 0) {
                         moveScore -= 100;
+                    }
+                    if (killerMoves[ply][0] == move || killerMoves[ply][1] == move) {
+                        moveScore += 1000;
                     }
                     orderedMoves.push_back({moveScore, move});
                 }
@@ -108,7 +112,7 @@ class ChessAI {
             }
 
             Bound evaluationBound = UPPER_BOUND;
-            vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, false);
+            vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, ply, false);
             Move bestMove = orderedMoves[0].second;
             for (int i = 0; i < orderedMoves.size(); i++) {
                 Move move = orderedMoves[i].second;
@@ -135,7 +139,10 @@ class ChessAI {
 
                 if (eval >= beta) {
                     transpositionTable.store(position.get_hash(), depth, beta, LOWER_BOUND, move);
-                    
+                    if (!move.is_capture() && killerMoves[ply][0] != move) {
+                        killerMoves[ply][1] = killerMoves[ply][0];
+                        killerMoves[ply][0] = move;
+                    }
                     // TODO: killer moves and history heuristic
 
                     // repetitionTable.TryPop() ???
@@ -168,7 +175,7 @@ class ChessAI {
                 alpha = eval;
             }
             MoveList<Us> legalMoves(position);
-            vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, true);
+            vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, -1, true);
             for (int i = 0; i < orderedMoves.size(); i++) {
                 Move move = orderedMoves[i].second;
                 position.play<Us>(move);

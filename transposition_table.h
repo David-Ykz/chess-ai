@@ -48,6 +48,10 @@ public:
             entry = {zobristHash, depth, eval, bound, bestMove};
         }
     }
+    
+    void clear() {
+        table.clear();
+    }
 };
 
 

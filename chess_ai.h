@@ -19,17 +19,27 @@ class ChessAI {
         int numTranspositionTableHits = 0;
         int maxDepthSearched = 0;
 
+        vector<double> timeTakenPerIteration;
+        vector<int> evaluationPerIteration;
+        vector<Move> bestMovePerIteration;
+        Move bestMoveThisIteration;
+
         const int CHECKMATE_SCORE = 64000;
         const int MAX_NUM_EXTENSIONS = 16;
         int PIECE_VALUES[14] = {100, 300, 300, 500, 900, 0, 0, 0, -100, -300, -300, -500, -900, 0};
     public:
         ChessAI(Position& p) : position(p), transpositionTable(1048576) {}
         void printDebug() {
-            cout << "Number of negamax searches: " << numNegamaxSearches << endl;
-            cout << "Number of quiescence searches: " << numQuiescenceSearches << endl;
-            cout << "Number of nodes pruned: " << numPruned << endl;
-            cout << "Number of transposition table hits: " << numTranspositionTableHits << endl;
-            cout << "Max depth searched: " << maxDepthSearched << endl;
+            cout << "Negamax searches: " << numNegamaxSearches;
+            cout << " | Quiscence searches: " << numQuiescenceSearches;
+            cout << " | Nodes pruned: " << numPruned;
+            cout << " | Transpositions: " << numTranspositionTableHits;
+            cout << " | Max depth: " << maxDepthSearched << endl;
+            numNegamaxSearches = 0;
+            numQuiescenceSearches = 0;
+            numPruned = 0;
+            numTranspositionTableHits = 0;
+            maxDepthSearched = 0;
         }
         template<Color Us>
         vector<pair<int, Move>> orderMoves(MoveList<Us>& legalMoves, int ply, bool filterCaptures) {
@@ -152,6 +162,9 @@ class ChessAI {
                 if (eval > alpha) {
                     evaluationBound = EXACT;
                     bestMove = orderedMoves[i].second;
+                    if (ply == 0) {
+                        bestMoveThisIteration = bestMove;
+                    }
                     alpha = eval;
                 }
             }
@@ -214,21 +227,47 @@ class ChessAI {
         }
 
         template<Color Us>
-        void makeMove() {
-            numNegamaxSearches = 0;
-            numQuiescenceSearches = 0;
-            numPruned = 0;
-            numTranspositionTableHits = 0;
-            maxDepthSearched = 0;
-        
-            Color turn = position.turn();
+        void searchMoves(int depth, int alpha, int beta) {
+            transpositionTable.clear();
             int evaluation;
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-            evaluation = negamaxSearch<Us>(0, 6, -64000, 64000, 0);
+            evaluation = negamaxSearch<Us>(0, depth, alpha, beta, 0);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             auto diff = end - begin;
-            cout << "Evaluation: " << evaluation << endl;
-            printDebug();
-            cout << "Time taken: " << chrono::duration_cast<std::chrono::microseconds>(diff).count()/1000000.0 << " seconds" << endl;
+            timeTakenPerIteration.push_back(chrono::duration_cast<chrono::microseconds>(diff).count()/1000000.0);
+            evaluationPerIteration.push_back(evaluation);
+            bestMovePerIteration.push_back(bestMoveThisIteration);
+            // printDebug();
+        }
+
+        template<Color Us>
+        void iterativeDeepening() {
+            const double MAX_TIME_LIMIT = 1.0;
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+            for (int i = 9; i < 10; i++) {
+                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                auto diff = end - start;
+                if (chrono::duration_cast<std::chrono::microseconds>(diff).count()/1000000.0 > MAX_TIME_LIMIT) {
+                    return;
+                }
+                searchMoves<Us>(i, -64000, 64000);
+            }
+        }
+
+
+        template<Color Us>
+        Move findMove() {
+            timeTakenPerIteration.clear();
+            evaluationPerIteration.clear();
+            bestMovePerIteration.clear();
+            iterativeDeepening<Us>();
+            for (int i = 0; i < timeTakenPerIteration.size(); i++) {
+                cout << "Iteration " << i << " --";
+                cout << " time taken: " << timeTakenPerIteration[i];
+                cout << " | evaluation: " << evaluationPerIteration[i];
+                cout << " | best move: " << bestMovePerIteration[i];
+                cout << endl;
+            }
+            return bestMovePerIteration[bestMovePerIteration.size() - 1];
         }
 };

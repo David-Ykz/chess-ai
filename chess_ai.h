@@ -22,13 +22,12 @@ class ChessAI {
         const int MAX_NUM_EXTENSIONS = 16;
         int PIECE_VALUES[14] = {100, 300, 300, 500, 900, 0, 0, 0, -100, -300, -300, -500, -900, 0};
     public:
-        ChessAI(Position& p) : position(p), transpositionTable(1000000) {}
+        ChessAI(Position& p) : position(p), transpositionTable(1048576) {}
         void printDebug() {
             cout << "Number of negamax searches: " << numNegamaxSearches << endl;
             cout << "Number of quiescence searches: " << numQuiescenceSearches << endl;
             cout << "Number of nodes pruned: " << numPruned << endl;
             cout << "Number of transposition table hits: " << numTranspositionTableHits << endl;
-            transpositionTable.print();
             cout << "Max depth searched: " << maxDepthSearched << endl;
         }
         template<Color Us>
@@ -45,11 +44,6 @@ class ChessAI {
                     if ((pawn_attacks<~Us>(position.bitboard_of(~Us, PAWN)) & SQUARE_BB[move.to()]) > 0) {
                         moveScore -= 100;
                     }
-                    // position.play<Us>(move);
-                    // if (position.in_check<~Us>()) {
-                    //     moveScore += 10000;
-                    // }
-                    // position.undo<Us>(move);
                     orderedMoves.push_back({moveScore, move});
                 }
             }
@@ -76,6 +70,24 @@ class ChessAI {
                 return alpha;
             }
 
+            TTEntry* entry = transpositionTable.probe(position.get_hash());
+            if (entry != nullptr && entry->depth >= depth) {
+                ++numTranspositionTableHits;
+                int storedEval = entry->eval;
+                int bound = entry->bound;
+                if (bound == EXACT) {
+                    if constexpr (Us == WHITE) {
+                        return -storedEval;
+                    } else {
+                        return storedEval;
+                    }
+                } else if (bound == UPPER_BOUND && storedEval <= alpha) {
+                    return storedEval;
+                } else if (bound == LOWER_BOUND && storedEval >= beta) {
+                    return storedEval;
+                }
+            }
+
             if (depth == 0) {
                 return quiescenceSearch<Us>(alpha, beta);
             }
@@ -95,9 +107,9 @@ class ChessAI {
                 // repetitionTable.store(position.get_hash(), prevWasCapture, prevWasPawnMove);
             }
 
+            Bound evaluationBound = UPPER_BOUND;
             vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, false);
-//            for (const auto& orderedMove : orderedMoves) {
-    //                Move move = orderedMove.second;
+            Move bestMove = orderedMoves[0].second;
             for (int i = 0; i < orderedMoves.size(); i++) {
                 Move move = orderedMoves[i].second;
                 int extensions = 0;
@@ -122,8 +134,7 @@ class ChessAI {
                 position.undo<Us>(move);
 
                 if (eval >= beta) {
-                    // TODO: add bounds for transposition table
-                    // transpositionTable.store(position.get_hash(), depth, ply, beta, LOWER_BOUND, move);
+                    transpositionTable.store(position.get_hash(), depth, beta, LOWER_BOUND, move);
                     
                     // TODO: killer moves and history heuristic
 
@@ -132,17 +143,16 @@ class ChessAI {
                     return beta;
                 }
                 if (eval > alpha) {
+                    evaluationBound = EXACT;
+                    bestMove = orderedMoves[i].second;
                     alpha = eval;
-
                 }
             }
             if (ply > 0) {
                 // repetitionTable.TryPop();
             }
-            // TODO: transposition table store logic
-
+            transpositionTable.store(position.get_hash(), depth, alpha, evaluationBound, bestMove);
             return alpha;
-            
         }
 
         template<Color Us>
@@ -153,6 +163,7 @@ class ChessAI {
                 ++numPruned;
                 return beta;
             }
+
             if (eval > alpha) {
                 alpha = eval;
             }
@@ -173,98 +184,6 @@ class ChessAI {
                 }
             }
             return alpha;
-        }
-
-        template <Color Us>
-        int quiescent(int alpha, int beta) {
-            int standPat = evaluate();
-            int bestValue = standPat;
-            if (standPat >= beta) {
-                ++numPruned;
-                return standPat;
-            }
-            if (standPat + 100 < alpha) {
-                return standPat;
-            }
-
-            if (alpha < standPat) {
-                alpha = standPat;
-            }
-
-            MoveList<Us> legalMoves(position);
-            vector<pair<int, Move>> orderedMoves = orderMoves(legalMoves, true);
-            for (const auto& orderedMove : orderedMoves) {
-                const Move move = orderedMove.second;
-                position.play<Us>(move);
-                int score = -quiescent<~Us>(-beta, -alpha);
-                position.undo<Us>(move);
-                if (score >= beta) {
-                    ++numPruned;
-                    return bestValue;
-                }
-                if (score > bestValue) {
-                    bestValue = score;
-                }
-                if (score > alpha) {
-                    alpha = score;
-                }
-            }
-            return bestValue;        
-        }
-
-        template <Color Us>
-        int search(int depth, int alpha, int beta) {
-            MoveList<Us> legalMoves(position);
-            if (legalMoves.size() == 0) {
-                if (position.in_check<Us>()) {
-                    return -CHECKMATE_SCORE - depth;
-                }
-                return 0;
-            }
-            
-            const uint64_t hash = position.get_hash();
-            if (transpositionTable.contains(hash)) {
-                TTEntry entry = transpositionTable.get(hash);
-                if (entry.depth >= depth) {
-                    ++numTranspositionTableHits;
-                    if constexpr (Us == WHITE) {
-                        return -entry.eval;
-                    } else {
-                        return entry.eval;
-                    }
-                }
-            }
-
-            
-            if (depth == 0) {
-                ++numQuiescenceSearches;
-                return quiescent<Us>(alpha, beta);
-            }
-            int bestValue = -64000;
-            vector<pair<int, Move>> orderedMoves = orderMoves(legalMoves, false);
-            for (const auto& orderedMove : orderedMoves) {
-                const Move move = orderedMove.second;
-                position.play<Us>(move);
-                int score = -search<~Us>(depth - 1, -beta, -alpha);
-                position.undo<Us>(move);
-                if (score >= beta) {
-                    ++numPruned;
-                    return beta;
-                }
-
-                if (score > bestValue) {
-                    bestValue = score;
-                    // if (score >= beta) {
-                    //     ++numPruned;
-                    //     return bestValue;
-                    // }
-                        if (score > alpha) {
-                        alpha = score;
-                    }
-                }
-            }
-            transpositionTable.store(hash, depth, bestValue, -1); // We don't store bestMove here since it's not needed for exact evaluation
-            return bestValue;
         }
         
         int evaluate() {
@@ -287,6 +206,7 @@ class ChessAI {
             return evaluation;
         }
 
+        template<Color Us>
         void makeMove() {
             numNegamaxSearches = 0;
             numQuiescenceSearches = 0;
@@ -297,14 +217,7 @@ class ChessAI {
             Color turn = position.turn();
             int evaluation;
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-            if (turn == WHITE) {
-                evaluation = negamaxSearch<WHITE>(0, 18, -64000, 64000, 0);
-
-            } else {
-                cout << "start" << endl;
-                evaluation = search<BLACK>(3, -64000, 64000);
-                cout << "end" << endl;
-            }
+            evaluation = negamaxSearch<Us>(0, 6, -64000, 64000, 0);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             auto diff = end - begin;
             cout << "Evaluation: " << evaluation << endl;

@@ -59,8 +59,8 @@ int main() {
 //	test_perft();
 
 	Position p;
-	// Position::set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", p);
-	Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
+	Position::set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", p);
+//	Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
 //	Position::set("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - -", p);
 //	Position::set("r3r1k1/ppq1bpp1/3p4/2p1nbP1/8/P1NP4/BPP1Q3/R2K3R w - -", p);
 // Mate in 2
@@ -75,7 +75,7 @@ int main() {
 
 
  	ChessAI ai = ChessAI(p);
-	ai.makeMove();
+	ai.makeMove<WHITE>();
 
 	return 0;
 }

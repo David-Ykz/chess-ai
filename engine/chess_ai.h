@@ -1,5 +1,6 @@
+using namespace std;
+
 #pragma once
-#include "eval_move.h"
 #include "transposition_table.h"
 #include "pst.h"
 #include <limits>

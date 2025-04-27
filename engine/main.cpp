@@ -57,7 +57,7 @@ int main() {
 
 	//gk call test_perft()
 //	test_perft();
-	string gameFen = "6k1/2qr1p2/r5p1/p3p1QR/b1pbP3/BP6/2P4P/1K3R2 w - -";
+	string gameFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
 
 
 	Position p;

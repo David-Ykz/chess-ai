@@ -1,6 +1,4 @@
 #pragma once
-#include <cstdint>
-#include "eval_move.h"
 
 class PST {
 public:

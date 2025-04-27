@@ -1,9 +1,10 @@
-using namespace std;
-
 #pragma once
 
 #include <vector>
 #include <cstdint>
+#include "./surge/src/types.h"
+#include "./surge/src/position.h"
+#include "./surge/src/tables.h"
 
 enum Bound { LOWER_BOUND, UPPER_BOUND, EXACT };
 

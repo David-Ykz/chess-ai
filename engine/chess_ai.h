@@ -23,10 +23,13 @@ class ChessAI {
         vector<double> timeTakenPerIteration;
         vector<int> evaluationPerIteration;
         vector<Move> bestMovePerIteration;
+        vector<pair<Move, int>> candidateMoves;
         Move bestMoveThisIteration;
 
         const int CHECKMATE_SCORE = 64000;
         const int MAX_NUM_EXTENSIONS = 16;
+        int midgamePieceValues[14] = {82, 337, 365, 477, 1025, 0, 0, 0, -82, -337, -365, -477, -1025, 0};
+        int endgamePieceValues[14] = {94, 281, 297, 512, 936, 0, 0, 0, -94, -281, -297, -512, -936, 0};
         int PIECE_VALUES[14] = {100, 300, 300, 500, 900, 0, 0, 0, -100, -300, -300, -500, -900, 0};
     public:
         ChessAI(Position& p) : position(p), transpositionTable(1048576) {}
@@ -156,6 +159,10 @@ class ChessAI {
                 }
                 position.undo<Us>(move);
 
+                if (ply == 0) {
+                    candidateMoves.push_back({move, eval});
+                }
+
                 if (eval >= beta) {
                     transpositionTable.store(position.get_hash(), depth, beta, LOWER_BOUND, move);
                     if (!move.is_capture() && killerMoves[ply][0] != move) {
@@ -216,7 +223,6 @@ class ChessAI {
         
         int evaluate() {
             int evaluation = 0;
-
             for (int i = WHITE_PAWN; i < NO_PIECE; ++i) {
                 Piece piece = static_cast<Piece>(i);
                 Bitboard bitboard = position.bitboard_of(piece);
@@ -237,6 +243,9 @@ class ChessAI {
         template<Color Us>
         void searchMoves(int depth, int alpha, int beta) {
             int evaluation;
+            MoveList<Us> moves(position);
+            candidateMoves.clear();
+            candidateMoves.resize(moves.size());
             chrono::steady_clock::time_point begin = chrono::steady_clock::now();
             evaluation = negamaxSearch<Us>(0, depth, alpha, beta, 0);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -302,5 +311,14 @@ class ChessAI {
 //                cout << bestMovePerIteration[bestMovePerIteration.size() - 1] << endl;
             }
             return bestMovePerIteration[bestMovePerIteration.size() - 1];
+        }
+
+        template<Color Us>
+        vector<pair<Move, int>> generateCandidateMoves() {
+            timeTakenPerIteration.clear();
+            evaluationPerIteration.clear();
+            bestMovePerIteration.clear();
+            iterativeDeepening<Us>();
+            return candidateMoves;
         }
 };

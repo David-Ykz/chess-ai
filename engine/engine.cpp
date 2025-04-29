@@ -13,7 +13,11 @@ int main() {
 		Position::set(fen, p);
 		ChessAI ai = ChessAI(p);
         if (p.turn() == WHITE) {
-            cout << ai.findMove<WHITE>() << endl;
+            auto candidateMoves = ai.generateCandidateMoves<WHITE>();
+            for (const auto& move : candidateMoves) {
+                cout << move.first << "|" << move.second << ",";
+            }
+            cout << endl;
         } else {
             cout << ai.findMove<BLACK>() << endl;
         }

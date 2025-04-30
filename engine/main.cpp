@@ -56,14 +56,29 @@ int main() {
 	zobrist::initialise_zobrist_keys();
 
 
+
+
+
+
 	//gk call test_perft()
 //	test_perft();
-	string gameFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+//	string gameFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+//	string gameFen = "r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -";
+	string gameFen = "rnbq1rk1/1pp1bppp/p3pn2/8/2B5/2N1PN2/PP1P1PPP/2BQ1RK1 w - - 1 8";
 //	string gameFen = "5q2/p4k2/1pQ1pn2/1P1n1pB1/P2P3P/5R2/5P2/6K1 w -  -";
 //	string gameFen = "rn2k2r/pp3pp1/4pn1p/1P1q4/P2P4/n4N2/3B1PPP/R2Q1RK w kq -";
 
 
 	Position p;
+	Position testP;
+
+	Position::set(gameFen, testP);
+
+	cout << testP;
+	testP.play<WHITE>(Move());
+	cout << testP;
+	cout << testP.turn();
+
 //	Position::set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -", p);
 // Position::set("r4k1r/pp3ppp/1qp1p3/4Nb2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w - -", p);
 //Position::set("r3k2r/1p3ppp/1pp1p3/5b2/2PP2n1/1Q4P1/P3PPBP/R4RK1 w -  -", p);
@@ -110,3 +125,8 @@ int main() {
 // null move pruning
 // delta pruning
 // futility pruning
+// reverse futility pruning
+// multithreading
+// history heuristic
+// pawn promotion search extension
+

@@ -30,6 +30,7 @@ class ChessAI {
         const int MAX_NUM_EXTENSIONS = 16;
         int midgamePieceValues[14] = {82, 337, 365, 477, 1025, 0, 0, 0, -82, -337, -365, -477, -1025, 0};
         int endgamePieceValues[14] = {94, 281, 297, 512, 936, 0, 0, 0, -94, -281, -297, -512, -936, 0};
+        int gamePhaseIncrement[14] = {0, 1, 1, 2, 4, 0, 0, 0, 0, 1, 1, 2, 4, 0};
         int PIECE_VALUES[14] = {100, 300, 300, 500, 900, 0, 0, 0, -100, -300, -300, -500, -900, 0};
     public:
         ChessAI(Position& p) : position(p), transpositionTable(1048576) {}
@@ -120,6 +121,9 @@ class ChessAI {
             }
 
             ++numNegamaxSearches;
+
+
+
             MoveList<Us> legalMoves(position);
             if (legalMoves.size() == 0) {
                 if (position.in_check<Us>()) { // Checkmate
@@ -207,7 +211,10 @@ class ChessAI {
             vector<pair<int, Move>> orderedMoves = orderMoves<Us>(legalMoves, -1, true);
             for (int i = 0; i < orderedMoves.size(); i++) {
                 Move move = orderedMoves[i].second;
+                // TODO: add delta pruning
+//                if (eval + midgamePieceValues[position.at(move.to())] )
                 position.play<Us>(move);
+
                 eval = -quiescenceSearch<~Us>(-beta, -alpha);
                 position.undo<Us>(move);
 
@@ -222,7 +229,7 @@ class ChessAI {
             return alpha;
         }
         
-        int evaluate() {
+        int basicEvaluation() {
             int evaluation = 0;
             for (int i = WHITE_PAWN; i < NO_PIECE; ++i) {
                 Piece piece = static_cast<Piece>(i);
@@ -230,15 +237,40 @@ class ChessAI {
                 while (bitboard) {
                     int square = __builtin_ctzll(bitboard);
                     bitboard &= bitboard - 1;
-//                    evaluation += PIECE_VALUES[i] + tables.pst[i][square];
-                    evaluation += midgamePieceValues[i] + tables.midgamePst[i][square];
+                    evaluation += PIECE_VALUES[i] + tables.pst[i][square];
                 }
             }
             if (position.turn() == BLACK) {
                 return -evaluation;
             }
-
             return evaluation;
+        }
+
+        int evaluate() {
+            int midgameEvaluation = 0;
+            int endgameEvaluation = 0;
+            int gamePhase = 0;
+            for (int i = WHITE_PAWN; i < NO_PIECE; ++i) {
+                Piece piece = static_cast<Piece>(i);
+                Bitboard bitboard = position.bitboard_of(piece);
+                while (bitboard) {
+                    int square = __builtin_ctzll(bitboard);
+                    bitboard &= bitboard - 1;
+                    midgameEvaluation += midgamePieceValues[i] + tables.midgamePst[i][square];
+                    endgameEvaluation += endgamePieceValues[i] + tables.endgamePst[i][square];
+                    gamePhase += gamePhaseIncrement[i];
+                }
+            }
+            int midgamePhase = gamePhase;
+            if (midgamePhase < 24) {
+                midgamePhase = 24;
+            }
+            int endgamePhase = 24 - midgamePhase;
+            if (position.turn() == BLACK) {
+                return -(midgamePhase * midgameEvaluation + endgamePhase * endgameEvaluation)/24;
+            }
+
+            return (midgamePhase * midgameEvaluation + endgamePhase * endgameEvaluation)/24;
         }
 
         template<Color Us>
@@ -269,7 +301,7 @@ class ChessAI {
                 }
                 if (!evaluationPerIteration.empty()) {
                     bool validSearch = false;
-                    for (int j = 32; j <= 256; j <<= 1) {
+                    for (int j = 4; j <= 256; j <<= 2) {
                         int score = evaluationPerIteration[evaluationPerIteration.size() - 1];
                         int alpha = score - j;
                         int beta = score + j;
@@ -295,7 +327,7 @@ class ChessAI {
 
         template<Color Us>
         Move findMove() {
-            bool debug = false;
+            bool debug = true;
             timeTakenPerIteration.clear();
             evaluationPerIteration.clear();
             bestMovePerIteration.clear();

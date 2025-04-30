@@ -57,7 +57,8 @@ class ChessAI {
                 if (move.is_capture()) {
                     Piece from = position.at(move.from());
                     Piece to = position.at(move.to());
-                    moveScore += 10 * abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from]);
+//                    moveScore += 10 * abs(PIECE_VALUES[to]) - abs(PIECE_VALUES[from]);
+                    moveScore += 10 * abs(midgamePieceValues[to]) - abs(midgamePieceValues[from]);
                     orderedMoves.push_back({moveScore, move});
                 } else if (!filterCaptures) {
                     if ((pawn_attacks<~Us>(position.bitboard_of(~Us, PAWN)) & SQUARE_BB[move.to()]) > 0) {
@@ -229,9 +230,9 @@ class ChessAI {
                 while (bitboard) {
                     int square = __builtin_ctzll(bitboard);
                     bitboard &= bitboard - 1;
-                    evaluation += PIECE_VALUES[i] + tables.pst[i][square];
+//                    evaluation += PIECE_VALUES[i] + tables.pst[i][square];
+                    evaluation += midgamePieceValues[i] + tables.midgamePst[i][square];
                 }
-
             }
             if (position.turn() == BLACK) {
                 return -evaluation;

@@ -13,14 +13,25 @@ int main() {
 		Position::set(fen, p);
 		ChessAI ai = ChessAI(p);
         if (p.turn() == WHITE) {
-            auto candidateMoves = ai.generateCandidateMoves<WHITE>();
-            for (const auto& move : candidateMoves) {
-                cout << move.first << "|" << move.second << ",";
-            }
-            cout << endl;
+            cout << ai.findMove<WHITE>() << endl;
         } else {
             cout << ai.findMove<BLACK>() << endl;
         }
+
+
+        // if (p.turn() == WHITE) {
+        //     auto candidateMoves = ai.generateCandidateMoves<WHITE>();
+        //     for (const auto& move : candidateMoves) {
+        //         cout << move.first << "|" << move.second << ",";
+        //     }
+        //     cout << endl;
+        // } else {
+        //     auto candidateMoves = ai.generateCandidateMoves<BLACK>();
+        //     for (const auto& move : candidateMoves) {
+        //         cout << move.first << "|" << move.second << ",";
+        //     }
+        //     cout << endl;
+        // }
 
 	return 0;
 }

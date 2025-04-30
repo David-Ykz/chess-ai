@@ -55,9 +55,12 @@ int main() {
 	initialise_all_databases();
 	zobrist::initialise_zobrist_keys();
 
+
 	//gk call test_perft()
 //	test_perft();
 	string gameFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+//	string gameFen = "5q2/p4k2/1pQ1pn2/1P1n1pB1/P2P3P/5R2/5P2/6K1 w -  -";
+//	string gameFen = "rn2k2r/pp3pp1/4pn1p/1P1q4/P2P4/n4N2/3B1PPP/R2Q1RK w kq -";
 
 
 	Position p;
@@ -73,17 +76,30 @@ int main() {
 //	Position::set("6k1/2qr1p2/r5p1/p3p1QR/b1pbP3/BP6/2P4P/1K3R2 w - -", p);
 //	Position::set("1k6/8/1K6/8/8/8/8/5R2 w - -", p);
 //	Position::set("8/8/8/8/8/2k5/1q6/K7 w - -", p);
-
-	while (true) {
-		Position p;
-		Position::set(gameFen, p);
-		ChessAI ai = ChessAI(p);
-		p.play<WHITE>(ai.findMove<WHITE>());
-		cout << p;
-		string input;
-		cin >> input;
-		p.play<BLACK>(input);
-		gameFen = p.fen();
+	if (true) {
+		while (true) {
+			Position p;
+			Position::set(gameFen, p);
+			ChessAI ai = ChessAI(p);
+			p.play<WHITE>(ai.findMove<WHITE>());
+			cout << p;
+			string input;
+			cin >> input;
+			p.play<BLACK>(input);
+			gameFen = p.fen();
+		}	
+	} else {
+		while (true) {
+			Position p;
+			Position::set(gameFen, p);
+			ChessAI ai = ChessAI(p);
+			string input;
+			cin >> input;
+			p.play<WHITE>(input);
+			p.play<BLACK>(ai.findMove<BLACK>());
+			gameFen = p.fen();
+			cout << p;
+		}	
 	}
 
 
@@ -94,5 +110,3 @@ int main() {
 // null move pruning
 // delta pruning
 // futility pruning
-// aspiration windows
-// using best move from prev iteration for move ordering

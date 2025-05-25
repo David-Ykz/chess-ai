@@ -31,7 +31,7 @@ int main() {
     uint64_t nodes = perft(6, board);
     auto t2 = std::chrono::high_resolution_clock::now();
     uint64_t t_micro = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-    int nps = nodes * 100000/t_micro;
+    int nps = nodes * 1000000/t_micro;
     std::cout << nodes << " " << t_micro * 1.0 / 1000000 << " " << nps << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();

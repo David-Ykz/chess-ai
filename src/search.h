@@ -10,14 +10,20 @@ private:
     Board board;
     Evaluator evaluator;
     Move rootMove;
+    Move killerMoves[64][2];
     chrono::_V2::system_clock::time_point startTime;
     uint64_t timeLimitMicro;
     uint64_t nodesSearched;
 
 public:
-    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t) {}
+    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t) {
+        for (int i = 0; i < 64; i++) {
+            killerMoves[i][0] = Move();
+            killerMoves[i][1] = Move();
+        }
+    }
 
-    inline vector<pair<int, const Move*>> orderMoves(Movelist& moves) {
+    inline vector<pair<int, const Move*>> orderMoves(Movelist& moves, uint8_t ply) {
         vector<pair<int, const Move*>> orderedMoves;
         for (const auto& move : moves) {
             int moveScore = 0;
@@ -25,9 +31,15 @@ public:
                 int attacker = abs(evaluator.getPieceValue(board.at(move.from())));
                 int victim = abs(evaluator.getPieceValue(board.at(move.to())));
                 moveScore = victim * 100 - attacker;
+            } else if (killerMoves[ply][0] == move || killerMoves[ply][1] == move) {
+                moveScore = 1000;
             }
             orderedMoves.emplace_back(moveScore, &move);
         }
+        sort(orderedMoves.begin(), orderedMoves.end(), [](const auto& a, const auto& b)
+        {
+            return a.first > b.first;
+        });
         return orderedMoves;
     };
 
@@ -38,7 +50,7 @@ public:
 
         Movelist moves;
         movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
-        vector<pair<int, const Move*>> orderedMoves = orderMoves(moves);
+        vector<pair<int, const Move*>> orderedMoves = orderMoves(moves, 0);
         for (int i = 0; i < orderedMoves.size(); ++i) {
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
@@ -83,7 +95,7 @@ public:
         }
 
         int bestScore = -32000;
-        vector<pair<int, const Move*>> orderedMoves = orderMoves(moves);
+        vector<pair<int, const Move*>> orderedMoves = orderMoves(moves, ply);
         for (int i = 0; i < orderedMoves.size(); ++i) {
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
@@ -94,7 +106,13 @@ public:
                 bestScore = score;
                 if (ply == 0) rootMove = move;
                 if (score > alpha) alpha = score;
-                if (score >= beta) break;
+                if (score >= beta) {
+                    if (board.at(move.to()) == Piece::NONE && killerMoves[ply][0] != move) {
+                        killerMoves[ply][1] = killerMoves[ply][0];
+                        killerMoves[ply][0] = move;
+                    }
+                    break;
+                }
             }
         }
         return bestScore;

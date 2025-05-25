@@ -180,10 +180,28 @@ public:
 
     Move iterativeDeepening() {
         startTime = chrono::high_resolution_clock::now();
+        int score;
         for (int initalDepth = 1; initalDepth < 128; initalDepth++) {
             nodesSearched = 0;
             auto start = chrono::high_resolution_clock::now();
-            int score = negamax(0, initalDepth, -32000, 32000);
+            // Aspiration windows
+            bool needsFullSearch = false;
+            if (initalDepth > 1) {
+                for (int window = 4; window <= 1024; window <<= 2) {
+                    int alpha = score - window;
+                    int beta = score + window;
+                    score = negamax(0, initalDepth, alpha, beta);
+                    if (alpha <= score && score <= beta) {
+                        break;
+                    }
+                }
+                needsFullSearch = true;
+            } else {
+                needsFullSearch = true;
+            }
+            if (needsFullSearch) {
+                score = negamax(0, initalDepth, -32000, 32000);
+            }
             auto end = chrono::high_resolution_clock::now();
             if (outOfTime(end)) break;
             double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() * 1.0 / 1000000;

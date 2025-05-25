@@ -17,7 +17,7 @@ private:
 public:
     Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t) {}
 
-    vector<pair<int, const Move*>> orderMoves(Movelist& moves) {
+    inline vector<pair<int, const Move*>> orderMoves(Movelist& moves) {
         vector<pair<int, const Move*>> orderedMoves;
         for (const auto& move : moves) {
             int moveScore = 0;
@@ -65,12 +65,24 @@ public:
 
         // Threefold repetition
         if (board.isRepetition(1)) return 0;
+
         // Generate legal moves
         Movelist moves;
         movegen::legalmoves(moves, board);
+        
         // Checkmate or stalemate
-        if (moves.size() == 0) return board.inCheck() ? -(64000 - ply) : 0;
-        int bestScore = -64000;
+        if (moves.size() == 0) return board.inCheck() ? -(32000 - ply) : 0;
+
+        // Null move pruning
+        bool inCheck = board.inCheck();
+        if (!inCheck && depth >= 2) {
+            board.makeNullMove();
+            int score = -negamax(ply + 1, depth - 2, -beta, -beta + 1);
+            board.unmakeNullMove();
+            if (score >= beta) return score;
+        }
+
+        int bestScore = -32000;
         vector<pair<int, const Move*>> orderedMoves = orderMoves(moves);
         for (int i = 0; i < orderedMoves.size(); ++i) {
             Move move = *orderedMoves[i].second;
@@ -93,7 +105,7 @@ public:
         for (int initalDepth = 1; initalDepth < 128; initalDepth++) {
             nodesSearched = 0;
             auto start = chrono::high_resolution_clock::now();
-            int score = negamax(0, initalDepth, -64000, 64000);
+            int score = negamax(0, initalDepth, -32000, 32000);
             auto end = chrono::high_resolution_clock::now();
             if (outOfTime(end)) break;
             double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() * 1.0 / 1000000;

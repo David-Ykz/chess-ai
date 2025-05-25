@@ -24,7 +24,7 @@ public:
         }
     }
 
-    int evaluate(Board& board) {
+    inline int evaluate(Board& board) {
         int midgameEvaluation = 0;
         int endgameEvaluation = 0;
         int gamePhase = 0;
@@ -32,7 +32,7 @@ public:
         // Get piece score for each piece on the board
         while (occ) {
             uint8_t square = occ.pop();
-            int pieceType = board.at(square);
+            uint8_t pieceType = board.at(square);
             midgameEvaluation += midgamePieceTotals[pieceType][square];
             endgameEvaluation += endgamePieceTotals[pieceType][square];
             gamePhase += gamePhaseIncrement[pieceType];
@@ -48,7 +48,7 @@ public:
         return (board.sideToMove() == Color::WHITE ? 1 : -1) * (midgamePhase * midgameEvaluation + endgamePhase * endgameEvaluation)/24;
     }
 
-    inline int getPieceValue(const Piece& p) {
+    inline uint8_t getPieceValue(const Piece& p) {
         return midgamePieceValues[p];
     }
 };

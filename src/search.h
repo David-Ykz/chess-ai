@@ -16,9 +16,10 @@ private:
     chrono::_V2::system_clock::time_point startTime;
     uint64_t timeLimitMicro;
     uint64_t nodesSearched;
+    uint64_t numTranspositions;
 
 public:
-    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t), transpositionTable(1048576) {
+    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t), transpositionTable(24) {
         for (int i = 0; i < 64; i++) {
             killerMoves[i][0] = Move();
             killerMoves[i][1] = Move();
@@ -82,11 +83,10 @@ public:
     }
 
     int negamax(uint8_t ply, uint8_t depth, int alpha, int beta) {
-        ++nodesSearched;
-
         if (depth == 0) {
             return quiescence(alpha, beta);
         }
+        ++nodesSearched;
 
         if (ply <= 1) {
             auto endTime = chrono::high_resolution_clock::now();
@@ -179,6 +179,7 @@ public:
         } else {
             bound = EXACT;
         }
+        ++numTranspositions;
         transpositionTable.store(board.hash(), depth, bestScore, bound, ttMove);
         return bestScore;
     }
@@ -188,6 +189,7 @@ public:
         int score;
         for (int initalDepth = 1; initalDepth < 128; initalDepth++) {
             nodesSearched = 0;
+            numTranspositions = 0;
             auto start = chrono::high_resolution_clock::now();
             // Aspiration windows
             bool needsFullSearch = false;
@@ -211,7 +213,7 @@ public:
             if (outOfTime(end)) break;
             double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() * 1.0 / 1000000;
             cout << "Depth: " << initalDepth << " | Score: " << score << " | Move: " << rootMove;
-            cout << " | Time taken: " << duration << " | Nodes searched: " << nodesSearched << endl;
+            cout << " | Time: " << duration << " | Nodes: " << nodesSearched << " | Transpositions: " << numTranspositions << endl;
         }
         return rootMove;
     }

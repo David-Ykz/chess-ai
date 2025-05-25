@@ -25,11 +25,27 @@ public:
         }
     }
 
-    inline vector<pair<int, const Move*>> orderMoves(Movelist& moves, uint8_t ply) {
+    inline vector<pair<int, const Move*>> orderCaptureMoves(Movelist& moves) {
+        vector<pair<int, const Move*>> orderedMoves;
+        for (const auto& move : moves) {
+            int attacker = abs(evaluator.getPieceValue(board.at(move.from())));
+            int victim = abs(evaluator.getPieceValue(board.at(move.to())));
+            orderedMoves.emplace_back(victim * 100 - attacker, &move);
+        }
+        sort(orderedMoves.begin(), orderedMoves.end(), [](const auto& a, const auto& b)
+        {
+            return a.first > b.first;
+        });
+        return orderedMoves;
+    }
+
+    inline vector<pair<int, const Move*>> orderAllMoves(Movelist& moves, uint8_t ply, Move& ttMove) {
         vector<pair<int, const Move*>> orderedMoves;
         for (const auto& move : moves) {
             int moveScore = 0;
-            if (board.at(move.to()) != Piece::NONE) {
+            if (move == ttMove) {
+                moveScore = 1000000;
+            } else if (board.at(move.to()) != Piece::NONE) {
                 int attacker = abs(evaluator.getPieceValue(board.at(move.from())));
                 int victim = abs(evaluator.getPieceValue(board.at(move.to())));
                 moveScore = victim * 100 - attacker;
@@ -52,7 +68,7 @@ public:
 
         Movelist moves;
         movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
-        vector<pair<int, const Move*>> orderedMoves = orderMoves(moves, 0);
+        vector<pair<int, const Move*>> orderedMoves = orderCaptureMoves(moves);
         for (int i = 0; i < orderedMoves.size(); ++i) {
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
@@ -81,7 +97,22 @@ public:
         if (board.isRepetition(1)) return 0;
 
         // Transposition table lookup
-
+        Move ttMove;
+        TTEntry* entry = transpositionTable.probe(board.hash());
+        if (entry != nullptr) {
+            ttMove = entry->move;
+            if (entry->depth >= depth) {
+                int ttScore = entry->score;
+                Bound bound = entry->bound;
+                if (bound == EXACT) {
+                    return ttScore;
+                } else if (bound == LOWER_BOUND && ttScore >= beta) {
+                    return ttScore;
+                } else if (bound == UPPER_BOUND && ttScore <= alpha) {
+                    return ttScore;
+                }
+            }
+        }
 
         // Generate legal moves
         Movelist moves;
@@ -100,7 +131,8 @@ public:
         }
 
         int bestScore = -32000;
-        vector<pair<int, const Move*>> orderedMoves = orderMoves(moves, ply);
+        int alphaOriginal = alpha;
+        vector<pair<int, const Move*>> orderedMoves = orderAllMoves(moves, ply, ttMove);
         for (int i = 0; i < orderedMoves.size(); ++i) {
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
@@ -109,9 +141,10 @@ public:
             // Fail-soft framework
             if (score > bestScore) {
                 bestScore = score;
+                ttMove = move;
                 if (ply == 0) rootMove = move;
                 if (score > alpha) alpha = score;
-                if (score >= beta) {
+                if (alpha >= beta) {
                     if (board.at(move.to()) == Piece::NONE && killerMoves[ply][0] != move) {
                         killerMoves[ply][1] = killerMoves[ply][0];
                         killerMoves[ply][0] = move;
@@ -120,6 +153,15 @@ public:
                 }
             }
         }
+        Bound bound;
+        if (bestScore <= alphaOriginal) {
+            bound = UPPER_BOUND;
+        } else if (bestScore >= beta) {
+            bound = LOWER_BOUND;
+        } else {
+            bound = EXACT;
+        }
+        transpositionTable.store(board.hash(), depth, bestScore, bound, ttMove);
         return bestScore;
     }
 

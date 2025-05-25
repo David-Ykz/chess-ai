@@ -41,8 +41,7 @@ public:
         size_t idx = index(zobristHash);
         TTEntry& entry = table[idx];
 
-//        if (entry.zobristHash != zobristHash || depth >= entry.depth) {
-        if (!entry.isValid || entry.zobristHash != zobristHash) {
+        if (!entry.isValid || entry.zobristHash != zobristHash || depth >= entry.depth) {
             entry = {zobristHash, depth, score, true, bound, bestMove};
         }
     }

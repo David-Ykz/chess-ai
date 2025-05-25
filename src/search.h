@@ -132,10 +132,15 @@ public:
 
         int bestScore = -32000;
         int alphaOriginal = alpha;
+        int staticEval = evaluator.evaluate(board);
         vector<pair<int, const Move*>> orderedMoves = orderAllMoves(moves, ply, ttMove);
         for (int i = 0; i < orderedMoves.size(); ++i) {
+            if (depth >= 1 && !inCheck && staticEval <= alpha - 196 - 128 * depth) {
+                continue;
+            }
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
+
             int score;
             // Late move reduction
             bool needsFullSearch = true;

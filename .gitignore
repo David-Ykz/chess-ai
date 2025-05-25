@@ -1,8 +1,2 @@
-stockfish/
-cutechess/
-neural-network/data
-neural-network/model
-neural-network/training
-*.csv
-*.pth
-*.txt
+src/b
+src/main

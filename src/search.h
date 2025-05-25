@@ -2,6 +2,7 @@ using namespace std;
 
 #include "chess-library/include/chess.hpp"
 #include "evaluate.h"
+#include "transposition_table.h"
 #include <chrono>
 #include <vector>
 
@@ -11,12 +12,13 @@ private:
     Evaluator evaluator;
     Move rootMove;
     Move killerMoves[64][2];
+    TranspositionTable transpositionTable;
     chrono::_V2::system_clock::time_point startTime;
     uint64_t timeLimitMicro;
     uint64_t nodesSearched;
 
 public:
-    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t) {
+    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t), transpositionTable(1048576) {
         for (int i = 0; i < 64; i++) {
             killerMoves[i][0] = Move();
             killerMoves[i][1] = Move();
@@ -77,6 +79,9 @@ public:
 
         // Threefold repetition
         if (board.isRepetition(1)) return 0;
+
+        // Transposition table lookup
+
 
         // Generate legal moves
         Movelist moves;

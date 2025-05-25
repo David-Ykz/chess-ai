@@ -136,7 +136,20 @@ public:
         for (int i = 0; i < orderedMoves.size(); ++i) {
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
-            int score = -negamax(ply + 1, depth - 1, -beta, -alpha);
+            int score;
+            // Late move reduction
+            bool needsFullSearch = true;
+            if (i > 3 && depth > 2) {
+                needsFullSearch = false;
+                score = -negamax(ply + 1, 1, -alpha - 1, -alpha);
+                if (alpha < score && score < beta) {
+                    needsFullSearch = true;
+                }
+            }
+            if (needsFullSearch) {
+                score = -negamax(ply + 1, depth - 1, -beta, -alpha);
+            }
+
             board.unmakeMove(move);
             // Fail-soft framework
             if (score > bestScore) {

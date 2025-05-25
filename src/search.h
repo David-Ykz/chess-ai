@@ -125,7 +125,7 @@ public:
         bool inCheck = board.inCheck();
         if (!inCheck && depth >= 2) {
             board.makeNullMove();
-            int score = -negamax(ply + 1, depth - 2, -beta, -beta + 1);
+            int score = -negamax(ply + 1, depth - 2 - depth/3, -beta, -beta + 1);
             board.unmakeNullMove();
             if (score >= beta) return score;
         }
@@ -135,13 +135,14 @@ public:
         int staticEval = evaluator.evaluate(board);
         vector<pair<int, const Move*>> orderedMoves = orderAllMoves(moves, ply, ttMove);
         for (int i = 0; i < orderedMoves.size(); ++i) {
+            // Futility pruning
             if (depth >= 1 && !inCheck && staticEval <= alpha - 196 - 128 * depth) {
                 continue;
             }
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
-
             int score;
+
             // Late move reduction
             bool needsFullSearch = true;
             if (i > 3 && depth > 2) {

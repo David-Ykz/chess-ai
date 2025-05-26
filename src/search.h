@@ -17,9 +17,15 @@ private:
     uint64_t timeLimitMicro;
     uint64_t nodesSearched;
     uint64_t numTranspositions;
+    bool debug;
 
 public:
-    Search(Board b, uint64_t t) : board(b), evaluator(), timeLimitMicro(t), transpositionTable(24) {
+    Search(Board& b, uint64_t t, bool d) : 
+        board(b), 
+        evaluator(), 
+        timeLimitMicro(t), 
+        transpositionTable(24),
+        debug(d) {
         for (int i = 0; i < 64; i++) {
             killerMoves[i][0] = Move();
             killerMoves[i][1] = Move();
@@ -62,8 +68,8 @@ public:
         return orderedMoves;
     };
 
-    int quiescence(int alpha, int beta) {
-        int score = evaluator.evaluate(board);
+    inline int quiescence(int alpha, int beta) {
+        int score = evaluator.nnEvaluate(board);
         if (score >= beta) return beta;
         if (score > alpha) alpha = score;
 
@@ -82,12 +88,9 @@ public:
         return alpha;
     }
 
-    int negamax(uint8_t ply, uint8_t depth, int alpha, int beta) {
-        if (depth == 0) {
-            return quiescence(alpha, beta);
-        }
+    inline int negamax(uint8_t ply, uint8_t depth, int alpha, int beta) {
+        if (depth == 0) return quiescence(alpha, beta);
         ++nodesSearched;
-
         if (ply <= 1) {
             auto endTime = chrono::high_resolution_clock::now();
             if (outOfTime(endTime)) return 0;
@@ -114,6 +117,26 @@ public:
             }
         }
 
+        // Null move pruning
+        bool inCheck = board.inCheck();
+        if (!inCheck && depth >= 2) {
+            board.makeNullMove();
+            int score = -negamax(ply + 1, depth - 2 - depth/3, -beta, -beta + 1);
+            board.unmakeNullMove();
+            if (score >= beta) {
+                transpositionTable.store(board.hash(), depth, score, LOWER_BOUND, Move());
+                return score;
+            }
+            // if (score >= beta) return score;
+        }
+        int staticEval = evaluator.evaluate(board);
+        // Reverse futility pruning
+        if (depth <= 2 && entry == nullptr && !inCheck && staticEval >= beta + depth * 150) {
+            transpositionTable.store(board.hash(), depth, staticEval, LOWER_BOUND, Move());
+            return staticEval;
+        }
+        // if (depth <= 2 && entry == nullptr && !inCheck && staticEval >= beta + depth * 150) return staticEval;
+
         // Generate legal moves
         Movelist moves;
         movegen::legalmoves(moves, board);
@@ -121,41 +144,35 @@ public:
         // Checkmate or stalemate
         if (moves.size() == 0) return board.inCheck() ? -(32000 - ply) : 0;
 
-        // Null move pruning
-        bool inCheck = board.inCheck();
-        if (!inCheck && depth >= 2) {
-            board.makeNullMove();
-            int score = -negamax(ply + 1, depth - 2 - depth/3, -beta, -beta + 1);
-            board.unmakeNullMove();
-            if (score >= beta) return score;
-        }
-
         int bestScore = -32000;
         int alphaOriginal = alpha;
-        int staticEval = evaluator.evaluate(board);
         vector<pair<int, const Move*>> orderedMoves = orderAllMoves(moves, ply, ttMove);
         for (int i = 0; i < orderedMoves.size(); ++i) {
             // Futility pruning
-            if (depth >= 1 && !inCheck && staticEval <= alpha - 196 - 128 * depth) {
-                continue;
-            }
+            // if (depth < 10 && !inCheck && staticEval <= alpha - 500 - 256 * depth) {
+            //     continue;
+            // }
+
             Move move = *orderedMoves[i].second;
             board.makeMove(move);
             int score;
-
             // Late move reduction
             bool needsFullSearch = true;
             if (i > 3 && depth > 2) {
                 needsFullSearch = false;
-                score = -negamax(ply + 1, 1, -alpha - 1, -alpha);
+                score = -negamax(ply + 1, depth - 3, -alpha - 1, -alpha);
                 if (alpha < score && score < beta) {
                     needsFullSearch = true;
                 }
             }
+            // PV Search
+            if (needsFullSearch && i > 0) {
+                score = -negamax(ply + 1, depth - 1, -alpha - 1, -alpha);
+                needsFullSearch = alpha < score && score < beta;
+            }
             if (needsFullSearch) {
                 score = -negamax(ply + 1, depth - 1, -beta, -alpha);
             }
-
             board.unmakeMove(move);
             // Fail-soft framework
             if (score > bestScore) {
@@ -188,6 +205,7 @@ public:
     Move iterativeDeepening() {
         startTime = chrono::high_resolution_clock::now();
         int score;
+        Move oldRootMove;
         for (int initalDepth = 1; initalDepth < 128; initalDepth++) {
             nodesSearched = 0;
             numTranspositions = 0;
@@ -212,11 +230,14 @@ public:
             }
             auto end = chrono::high_resolution_clock::now();
             if (outOfTime(end)) break;
-            double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() * 1.0 / 1000000;
-            cout << "Depth: " << initalDepth << " | Score: " << score << " | Move: " << rootMove;
-            cout << " | Time: " << duration << " | Nodes: " << nodesSearched << " | Transpositions: " << numTranspositions << endl;
+            if (debug) {
+                double duration = chrono::duration_cast<chrono::microseconds>(end - start).count() * 1.0 / 1000000;
+                cout << "Depth: " << initalDepth << " | Score: " << score << " | Move: " << rootMove;
+                cout << " | Time: " << duration << " | Nodes: " << nodesSearched << " | Transpositions: " << numTranspositions << endl;
+            }
+            oldRootMove = rootMove;
         }
-        return rootMove;
+        return oldRootMove;
     }
 
     bool outOfTime(chrono::_V2::system_clock::time_point end) {

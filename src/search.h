@@ -107,6 +107,7 @@ public:
             if (entry->depth >= depth) {
                 int ttScore = entry->score;
                 Bound bound = entry->bound;
+                ++numTranspositions;
                 if (bound == EXACT) {
                     return ttScore;
                 } else if (bound == LOWER_BOUND && ttScore >= beta) {
@@ -127,15 +128,13 @@ public:
                 transpositionTable.store(board.hash(), depth, score, LOWER_BOUND, Move());
                 return score;
             }
-            // if (score >= beta) return score;
         }
-        int staticEval = evaluator.evaluate(board);
+        int staticEval = evaluator.nnEvaluate(board);
         // Reverse futility pruning
         if (depth <= 2 && entry == nullptr && !inCheck && staticEval >= beta + depth * 150) {
             transpositionTable.store(board.hash(), depth, staticEval, LOWER_BOUND, Move());
             return staticEval;
         }
-        // if (depth <= 2 && entry == nullptr && !inCheck && staticEval >= beta + depth * 150) return staticEval;
 
         // Generate legal moves
         Movelist moves;
@@ -181,6 +180,7 @@ public:
                 if (ply == 0) rootMove = move;
                 if (score > alpha) alpha = score;
                 if (alpha >= beta) {
+                    // Killer moves
                     if (board.at(move.to()) == Piece::NONE && killerMoves[ply][0] != move) {
                         killerMoves[ply][1] = killerMoves[ply][0];
                         killerMoves[ply][0] = move;
@@ -197,7 +197,6 @@ public:
         } else {
             bound = EXACT;
         }
-        ++numTranspositions;
         transpositionTable.store(board.hash(), depth, bestScore, bound, ttMove);
         return bestScore;
     }
@@ -240,7 +239,7 @@ public:
         return oldRootMove;
     }
 
-    bool outOfTime(chrono::_V2::system_clock::time_point end) {
+    inline bool outOfTime(chrono::_V2::system_clock::time_point end) {
         uint64_t durationMicro = chrono::duration_cast<chrono::microseconds>(end - startTime).count();
         return durationMicro > timeLimitMicro;
     }

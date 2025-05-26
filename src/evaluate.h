@@ -82,49 +82,6 @@ public:
         return Stockfish::Probe::eval(pieces, squares, index, board.sideToMove() == Color::WHITE, board.halfMoveClock());
     }
 
-
-
-    inline int evaluate(Board& board) {
-        int midgameEvaluation = 0;
-        int endgameEvaluation = 0;
-        int pieces[32];
-        int squares[32];
-        int index;
-        int gamePhase = 0;
-        Bitboard occ = board.occ();
-        // Get piece score for each piece on the board
-        while (occ) {
-            uint8_t square = occ.pop();
-            uint8_t pieceType = board.at(square);
-            pieces[index] = pieceType + (pieceType > 5 ? 3 : 1);
-            squares[index] = square;
-            // midgameEvaluation += midgamePieceTotals[pieceType][square];
-            // endgameEvaluation += endgamePieceTotals[pieceType][square];
-            // gamePhase += gamePhaseIncrement[pieceType];
-            ++index;
-        }
-
-        // Use tapered evaluation
-        // int midgamePhase = gamePhase;
-        // if (midgamePhase > 24) {
-        //     midgamePhase = 24;
-        // }
-        // int endgamePhase = 24 - midgamePhase;
-        // int eval = (midgamePhase * midgameEvaluation + endgamePhase * endgameEvaluation)/24;
-
-        // if (abs(eval) < 100) {
-           return Stockfish::Probe::eval(pieces, squares, index, board.sideToMove() == Color::WHITE, board.halfMoveClock());
-        // }
-
-        // Return score from the perspective of the turn player
-        // return board.sideToMove() == Color::WHITE ? eval : -eval;
-    }
-
-
-    // inline int evaluate(Board& board) {
-    //     return heuristicEvaluation(board);
-    // }
-
     inline uint8_t getPieceValue(const Piece& p) {
         return midgamePieceValues[p];
     }

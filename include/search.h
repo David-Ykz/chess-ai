@@ -32,7 +32,7 @@ private:
     Move rootMove;
     const int INFINITY = 99000;
     uint64_t startTime, stopTime, thinkingTimeMs;
-    const bool debug = true;
+    const bool debug = false;
     bool outOfTime = false;
 
     inline uint64_t tick() noexcept {

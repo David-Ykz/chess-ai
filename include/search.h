@@ -32,7 +32,7 @@ private:
     Move rootMove;
     const int INFINITY = 99000;
     uint64_t startTime, stopTime, thinkingTimeMs;
-    const bool debug = false;
+    const bool debug = true;
     bool outOfTime = false;
 
     inline uint64_t tick() noexcept {
@@ -44,13 +44,13 @@ private:
 
 
 public:
-    Search(uint64_t incrementTime) {
+    Search(uint64_t allotedTime) {
         board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        thinkingTimeMs = incrementTime;
+        thinkingTimeMs = allotedTime - 100;
     }
-    Search(Board &externalBoard, uint64_t incrementTime) {
+    Search(Board &externalBoard, uint64_t allotedTime) {
         board = externalBoard;
-        thinkingTimeMs = incrementTime;
+        thinkingTimeMs = allotedTime - 100;
     }
 
     void orderMoves(Movelist& moves);

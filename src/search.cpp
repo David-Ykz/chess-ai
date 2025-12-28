@@ -15,7 +15,10 @@ void Search::orderMoves(Movelist &moves) {
 
 int Search::quiescence(int alpha, int beta) {
     numNodes++;
-    if ((numNodes & 2047) == 0) outOfTime = checkTime();
+    if ((numNodes & 2047) == 0) {
+        outOfTime = checkTime();
+        if (outOfTime) return 0;
+    }
     int eval = evaluator.evaluate(board);
     if (eval >= beta) return beta;
     if (eval > alpha) alpha = eval;
@@ -41,7 +44,10 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
 
     numNodes++;
 
-    if ((numNodes & 2047) == 0) outOfTime = checkTime();
+    if ((numNodes & 2047) == 0) {
+        outOfTime = checkTime();
+        if (outOfTime) return 0;
+    }
 
     // Threefold repetition
     if (board.isRepetition(1)) return 0;
@@ -78,12 +84,10 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
 SearchResult Search::negamax(int depth) {
     SearchResult result;
     numNodes = 0;
-    outOfTime = false;
-    startTime = tick();
-    stopTime = startTime + thinkingTimeMs;
+    uint64_t start = tick();
     result.eval = negamax(0, depth, -INFINITY, INFINITY);
-    uint64_t actualStopTime = tick();
-    result.timeTaken = (actualStopTime - startTime) * 1.0 / 1000;
+    uint64_t stop = tick();
+    result.timeTaken = (stop - start) * 1.0 / 1000;
     result.bestMove = rootMove;
     result.numNodes = numNodes;
     result.depth = depth;
@@ -94,18 +98,26 @@ SearchResult Search::search() {
     SearchResult result;
     double totalTime = 0;
     uint64_t totalNodes = 0;
+    outOfTime = false;
+    startTime = tick();
+    stopTime = startTime + thinkingTimeMs;
     // Iterative deepening
     for (int i = 0; i < 128; i++) {
         SearchResult res = negamax(i);
         totalNodes += res.numNodes;
         totalTime += res.timeTaken;
         if (debug) {
-            cout << res << endl;
+            cerr << res << endl;
         }
         if (outOfTime) break;
         result = res;
     }
     result.timeTaken = totalTime;
     result.numNodes = totalNodes;
+
+    if (debug) {
+        cerr << "Overall Search - " << result << endl;
+    }
+
     return result;
 }

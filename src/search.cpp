@@ -52,10 +52,19 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     // Threefold repetition
     if (ply > 0 && board.isRepetition(1)) return 0;
 
+    // Null move pruning
+    bool inCheck = board.inCheck();
+    if (!inCheck && depth >= 3) {
+        board.makeNullMove();
+        int score = -negamax(ply + 1, depth - 3, -beta, -beta + 1);
+        board.unmakeNullMove();
+        if (score >= beta) return score;
+    }
+
     Movelist moves;
     movegen::legalmoves(moves, board);
 
-    if (moves.size() == 0) return board.inCheck() ? -(INFINITY - ply) : 0;
+    if (moves.size() == 0) return inCheck ? -(INFINITY - ply) : 0;
 
     int bestEval = -INFINITY;
     orderMoves(moves);
@@ -87,7 +96,7 @@ SearchResult Search::negamax(int depth) {
     uint64_t start = tick();
     result.eval = negamax(0, depth, -INFINITY, INFINITY);
     uint64_t stop = tick();
-    result.timeTaken = (stop - start) * 1.0 / 1000;
+    result.timeTakenMs = stop - start;
     result.bestMove = rootMove;
     result.numNodes = numNodes;
     result.depth = depth;
@@ -95,7 +104,6 @@ SearchResult Search::negamax(int depth) {
 }
 
 SearchResult Search::search() {
-    cout << board << endl;
     SearchResult result;
     double totalTime = 0;
     uint64_t totalNodes = 0;
@@ -107,7 +115,7 @@ SearchResult Search::search() {
     for (int i = 1; i < 128; i++) {
         SearchResult res = negamax(i);
         totalNodes += res.numNodes;
-        totalTime += res.timeTaken;
+        totalTime += res.timeTakenMs;
         if (debug) {
             sendDebugInfo(res);
             // cerr << res << endl;
@@ -115,7 +123,7 @@ SearchResult Search::search() {
         if (outOfTime) break;
         result = res;
     }
-    result.timeTaken = totalTime;
+    result.timeTakenMs = totalTime;
     result.numNodes = totalNodes;
 
     // if (debug) {
@@ -128,7 +136,7 @@ SearchResult Search::search() {
 
 void Search::sendDebugInfo(SearchResult &result) {
     cout << "info depth " << result.depth;
-    cout << " time " << result.timeTaken;
+    cout << " time " << result.timeTakenMs;
     cout << " nodes " << result.numNodes;
     cout << " score cp " << result.eval;
     cout << " pv " << uci::moveToUci(result.bestMove);

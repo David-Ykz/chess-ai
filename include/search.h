@@ -10,7 +10,7 @@ struct SearchResult {
     int         eval;
     uint64_t    numNodes;
     int         depth;
-    double      timeTaken;
+    uint64_t    timeTakenMs;
 };
 
 inline ostream& operator<<(ostream& os, const SearchResult& res) {
@@ -18,7 +18,7 @@ inline ostream& operator<<(ostream& os, const SearchResult& res) {
     os << " | Eval: " << res.eval;
     os << " | Depth: " << res.depth;
     os << " | Nodes: " << res.numNodes;
-    os << " | Time Taken: " << res.timeTaken;
+    os << " | Time Taken: " << res.timeTakenMs;
 
     return os;
 }

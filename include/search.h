@@ -46,11 +46,11 @@ private:
 public:
     Search(uint64_t allotedTime) {
         board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        thinkingTimeMs = allotedTime - 100;
+        thinkingTimeMs = allotedTime;
     }
     Search(Board &externalBoard, uint64_t allotedTime) {
         board = externalBoard;
-        thinkingTimeMs = allotedTime - 100;
+        thinkingTimeMs = allotedTime;
     }
 
     void orderMoves(Movelist& moves);
@@ -58,5 +58,6 @@ public:
     int negamax(int ply, int depth, int alpha, int beta);
     SearchResult negamax(int depth);
     SearchResult search();
+    void sendDebugInfo(SearchResult &result);
 
 };

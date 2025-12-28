@@ -50,7 +50,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     }
 
     // Threefold repetition
-    if (board.isRepetition(1)) return 0;
+    if (ply > 0 && board.isRepetition(1)) return 0;
 
     Movelist moves;
     movegen::legalmoves(moves, board);
@@ -95,19 +95,22 @@ SearchResult Search::negamax(int depth) {
 }
 
 SearchResult Search::search() {
+    cout << board << endl;
     SearchResult result;
     double totalTime = 0;
     uint64_t totalNodes = 0;
+    rootMove = Move();
     outOfTime = false;
     startTime = tick();
     stopTime = startTime + thinkingTimeMs;
     // Iterative deepening
-    for (int i = 0; i < 128; i++) {
+    for (int i = 1; i < 128; i++) {
         SearchResult res = negamax(i);
         totalNodes += res.numNodes;
         totalTime += res.timeTaken;
         if (debug) {
-            cerr << res << endl;
+            sendDebugInfo(res);
+            // cerr << res << endl;
         }
         if (outOfTime) break;
         result = res;
@@ -115,9 +118,19 @@ SearchResult Search::search() {
     result.timeTaken = totalTime;
     result.numNodes = totalNodes;
 
-    if (debug) {
-        cerr << "Overall Search - " << result << endl;
-    }
+    // if (debug) {
+        // sendDebugInfo(result);
+        // cerr << "Overall Search - " << result << endl;
+    // }
 
     return result;
+}
+
+void Search::sendDebugInfo(SearchResult &result) {
+    cout << "info depth " << result.depth;
+    cout << " time " << result.timeTaken;
+    cout << " nodes " << result.numNodes;
+    cout << " score cp " << result.eval;
+    cout << " pv " << uci::moveToUci(result.bestMove);
+    cout << endl;
 }

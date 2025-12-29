@@ -41,6 +41,10 @@ private:
     inline bool checkTime() {
         return tick() > stopTime;
     }
+    inline int log2(uint32_t x) {
+        return 31 - __builtin_clz(x);
+    }
+
 
 
 public:

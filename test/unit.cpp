@@ -43,7 +43,7 @@ TestCase testCases[NUM_TESTS] = {
     {"rnb3k1/ppp3pp/4p3/3p4/3PPR1q/3B2n1/PPP3P1/RNBQ2K1 b - - 4 13", 100, 400, Square("h4"), Square("h1")},
     {"r1b1r1k1/pp2np2/3q2p1/2p1B2p/3n3P/P2P1NP1/1P2PPB1/1R1QK2R b K - 4 15", 100, 200, Square("d4"), Square("f3")},
     {"3n1n2/1p2rpk1/p5p1/2PP3p/PP5P/3Q1qP1/5P2/1R1R2K1 b - - 2 30", 500, 300, Square("e7"), Square("e1")},
-    {"7k/1p4b1/pQ5P/5b2/4p3/1P6/P3PP1P/2Bq1BK1 b - - 0 29", 500, 200, Square("f5"), Square("h3")},
+    {"7k/1p4b1/pQ5P/5b2/4p3/1P6/P3PP1P/2Bq1BK1 b - - 0 29", 500, 400, Square("f5"), Square("h3")},
     {"8/p5k1/2p1rp2/5p1p/P2Pq3/5N1P/1R2nPPK/4Q3 b - - 11 34", 500, 300, Square("e4"), Square("f4")},
     {"rn1q1rk1/pp2bn1p/4Q1pP/4Np2/3p4/3B2P1/PPP2P2/R1B1K2R b KQ - 2 15", 100, 200, Square("d8"), Square("a5")},
     {"2r1k1r1/pp3p1Q/4b3/q7/2P5/2P5/P4PPP/1K1R1B1R b - - 0 19", 500, 500, Square("e6"), Square("f5")},

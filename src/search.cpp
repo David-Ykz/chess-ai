@@ -72,7 +72,20 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
         board.makeMove(move);
-        int eval = -negamax(ply + 1, depth - 1, -beta, -alpha);
+        int eval;
+
+        // Late move reduction
+        bool needsFullSearch = true;
+        if (i > 2 && depth > 2) {
+            needsFullSearch = false;
+            eval = -negamax(ply + 1, depth - 2, -alpha - 1, -alpha);
+            needsFullSearch = (eval > alpha);
+        }
+
+        if (needsFullSearch) {
+            eval = -negamax(ply + 1, depth - 1, -beta, -alpha);
+        }
+
         board.unmakeMove(move);
         if (outOfTime) return 0;
         if (eval > bestEval) {

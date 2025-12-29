@@ -4,8 +4,23 @@ void Search::orderMoves(Movelist &moves) {
     for (int i = 0; i < moves.size(); i++) {
         Piece victim = board.at(moves[i].to());
         Piece attacker = board.at(moves[i].from());
+        moves[i].setScore(mvv_lva[attacker][victim]);
+    }
+    sort(moves.begin(), moves.end(), [](const auto& a, const auto& b) {
+        return a.score() > b.score();
+    });
+}
+
+void Search::orderMoves(Movelist &moves, int ply) {
+    for (int i = 0; i < moves.size(); i++) {
+        Piece victim = board.at(moves[i].to());
+        Piece attacker = board.at(moves[i].from());
         if (victim != Piece::NONE) {
             moves[i].setScore(mvv_lva[attacker][victim]);
+        } else if (killerMoves[ply][0] == moves[i]) {
+            moves[i].setScore(killerBonuses[0]);
+        } else if (killerMoves[ply][1] == moves[i]) {
+            moves[i].setScore(killerBonuses[1]);
         }
     }
     sort(moves.begin(), moves.end(), [](const auto& a, const auto& b) {
@@ -67,7 +82,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     if (moves.size() == 0) return inCheck ? -(INFINITY - ply) : 0;
 
     int bestEval = -INFINITY;
-    orderMoves(moves);
+    orderMoves(moves, ply);
 
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
@@ -95,7 +110,13 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
             if (eval > alpha) {
                 alpha = eval;
                 // Fail soft
-                if (alpha >= beta) break;
+                if (alpha >= beta) {
+                    if (!board.isCapture(move) && killerMoves[ply][0] != move) {
+                        killerMoves[ply][1] = killerMoves[ply][0];
+                        killerMoves[ply][0] = move;
+                    }
+                    break;
+                };
             }
         }
     }

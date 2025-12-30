@@ -48,7 +48,7 @@ void goCommand(Board& board, std::istringstream& iss) {
         allottedTime = max(timeLeft / 20 + increment / 2, increment);
     }
 
-    Search searcher(board, allottedTime);
+    Search searcher(board.getFen(), allottedTime);
     SearchResult result = searcher.search();
 
     cout << "bestmove " << uci::moveToUci(result.bestMove) << endl;
@@ -81,6 +81,3 @@ void uciLoop() {
 int main() {
     uciLoop();
 }
-
-
-// <Saruman(37): info depth 7 nodes 11180 nps 4088474 pv d5d6 e8e7 f2g2 g7f6 g2f2 f6g6 f2g2  score cp -790

@@ -50,23 +50,34 @@ private:
 
 
 public:
-    Search(uint64_t allotedTime) {
-        board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        thinkingTimeMs = allotedTime;
+    Search() {
+        NNUE::Init("nets/nn-c288c895ea92.nnue");
+        board = Board(evaluator.nnue, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         for (int i = 0; i < 64; i++) {
             killerMoves[i][0] = Move();
             killerMoves[i][1] = Move();
         }
     }
-    Search(Board &externalBoard, uint64_t allotedTime) {
-        board = externalBoard;
-        thinkingTimeMs = allotedTime;
+    Search(string_view fen, uint64_t allottedTime) {
+        NNUE::Init("nets/nn-c288c895ea92.nnue");
+        board = Board(evaluator.nnue, fen);
+        thinkingTimeMs = allottedTime;
         for (int i = 0; i < 64; i++) {
             killerMoves[i][0] = Move();
             killerMoves[i][1] = Move();
         }
+    }
+    Search(Board &externalBoard, uint64_t allottedTime) {
+        board = externalBoard;
+        thinkingTimeMs = allottedTime;
+        for (int i = 0; i < 64; i++) {
+            killerMoves[i][0] = Move();
+            killerMoves[i][1] = Move();
+        }
+        NNUE::Init("nets/nn-c288c895ea92.nnue");
     }
 
+    void setAllottedTime(uint64_t allottedTime);
     void orderMoves(Movelist& moves);
     void orderMoves(Movelist& moves, int ply);
     int quiescence(int alpha, int beta);

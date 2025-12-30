@@ -1,5 +1,6 @@
-#include "chess-library/include/chess.hpp"
+#include "chess.hpp"
 #include "tables.h"
+#include "nnue.h"
 using namespace chess;
 
 class Eval {
@@ -16,6 +17,8 @@ private:
     }
 
 public:
+    NNUE::Net nnue;
+
     Eval() {
         initializePSTWeights();
     }
@@ -57,7 +60,8 @@ public:
     }
 
     inline int evaluate(Board &board) {
-        return pstEval(board);
+        return nnue.Evaluate(board.sideToMove());
+        // return pstEval(board);
     }
 };
 

@@ -1,5 +1,9 @@
 #include "../include/search.h"
 
+void Search::setAllottedTime(uint64_t allottedTime) {
+    thinkingTimeMs = allottedTime;
+}
+
 void Search::orderMoves(Movelist &moves) {
     for (int i = 0; i < moves.size(); i++) {
         Piece victim = board.at(moves[i].to());
@@ -43,9 +47,9 @@ int Search::quiescence(int alpha, int beta) {
     orderMoves(moves);
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
-        board.makeMove(move);
+        board.makeMove(move, evaluator.nnue);
         int eval = -quiescence(-beta, -alpha);
-        board.unmakeMove(move);
+        board.unmakeMove(move, evaluator.nnue);
         if (outOfTime) return 0;
         // Fail hard
         if (eval >= beta) return beta;
@@ -86,7 +90,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
 
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
-        board.makeMove(move);
+        board.makeMove(move, evaluator.nnue);
         int eval;
 
         // Late move reduction
@@ -101,7 +105,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
             eval = -negamax(ply + 1, depth - 1, -beta, -alpha);
         }
 
-        board.unmakeMove(move);
+        board.unmakeMove(move, evaluator.nnue);
         if (outOfTime) return 0;
         if (eval > bestEval) {
             bestEval = eval;

@@ -1,0 +1,156 @@
+#pragma once
+
+#include "chess.hpp"
+#include "simd.h"
+
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <numeric>
+#include <vector>
+#include <algorithm>
+
+/*
+    Credits:
+    Rafid-dev (Author of Rice and the NNUE logic this engine is using)
+    Luecx (Author of Koivisto)
+    Disservin (Author of Smallbrain)
+*/
+
+#define BUCKETS (16)
+#define INPUT_SIZE (64 * 12 * BUCKETS)
+#define HIDDEN_SIZE (512)
+#define HIDDEN_DSIZE (HIDDEN_SIZE * 2)
+#define OUTPUT_SIZE (1)
+
+#define INPUT_QUANTIZATION (32)
+#define HIDDEN_QUANTIZATON (128)
+
+extern std::array<int16_t, INPUT_SIZE * HIDDEN_SIZE> inputWeights;
+extern std::array<int16_t, HIDDEN_SIZE> inputBias;
+extern std::array<int16_t, HIDDEN_SIZE * 2> hiddenWeights;
+extern std::array<int32_t, OUTPUT_SIZE> hiddenBias;
+
+// namespace chess {
+//     enum class Square : int;
+//     enum class Color : int;
+//     enum class PieceType : int;
+//     class Board;
+// }
+
+
+namespace NNUE {
+
+// clang-format off
+constexpr std::array<int, 64> KING_BUCKET {
+    0,  1,  2,  3,  3,  2,  1,  0,
+    4,  5,  6,  7,  7,  6,  5,  4,
+    8,  9,  10, 11, 11, 10, 9,  8,
+    8,  9,  10, 11, 11, 10, 9,  8,
+    12, 12, 13, 13, 13, 13, 12, 12,
+    12, 12, 13, 13, 13, 13, 12, 12,
+    14, 14, 15, 15, 15, 15, 14, 14,
+    14, 14, 15, 15, 15, 15, 14, 14,
+};
+// clang-format on
+
+inline int kingSquareIndex(chess::Square kingSquare, chess::Color kingColor) {
+    kingSquare = chess::Square((56 * kingColor) ^ kingSquare.index());
+    return KING_BUCKET[kingSquare.index()];
+}
+
+inline int index(chess::PieceType pieceType, chess::Color pieceColor, chess::Square square, chess::Color view,
+                 chess::Square kingSquare) {
+    const int ksIndex = kingSquareIndex(kingSquare, view);
+    square = chess::Square(square ^ (56 * view));
+    square = chess::Square(square ^ (7 * !!(kingSquare.index() & 0x4)));
+
+    // clang-format off
+    return square.index()
+           + pieceType * 64
+           + !(pieceColor ^ view) * 64 * 6 + ksIndex * 64 * 6 * 2;
+    // clang-format on
+}
+
+static inline int16_t relu(int16_t input) { return std::max(static_cast<int16_t>(0), input); }
+
+struct Accumulator {
+#if defined(USE_SIMD)
+    alignas(ALIGNMENT) std::array<int16_t, HIDDEN_SIZE> white;
+    alignas(ALIGNMENT) std::array<int16_t, HIDDEN_SIZE> black;
+#else
+    std::array<int16_t, HIDDEN_SIZE> white;
+    std::array<int16_t, HIDDEN_SIZE> black;
+#endif
+
+    std::array<int16_t, HIDDEN_SIZE> &operator[](chess::Color side) { return side == chess::Color::WHITE ? white : black; }
+    std::array<int16_t, HIDDEN_SIZE> &operator[](bool side) { return side ? black : white; }
+
+    inline void copy(NNUE::Accumulator &acc) {
+        std::copy(std::begin(acc.white), std::end(acc.white), std::begin(white));
+        std::copy(std::begin(acc.black), std::end(acc.black), std::begin(black));
+    }
+
+    inline void clear() {
+        std::copy(std::begin(inputBias), std::end(inputBias), std::begin(white));
+        std::copy(std::begin(inputBias), std::end(inputBias), std::begin(black));
+    }
+};
+
+struct Net {
+    int32_t currentAccumulator = 0;
+
+    std::array<Accumulator, 512> accumulator_stack;
+
+    Net();
+
+    inline void push() {
+        accumulator_stack[currentAccumulator + 1].copy(accumulator_stack[currentAccumulator]);
+        currentAccumulator++;
+    }
+    inline void pull() { 
+        currentAccumulator--; 
+    }
+    inline void reset_accumulators() { 
+        currentAccumulator = 0;
+    }
+
+    void refresh(chess::Board &board);
+
+    template <bool add>
+    void updateAccumulator(chess::PieceType pieceType, chess::Color pieceColor, chess::Square square,  chess::Square kingSquare_White, chess::Square kingSquare_Black);
+
+    void updateAccumulator(chess::PieceType pieceType, chess::Color pieceColor, chess::Square from_square,
+                           chess::Square to_square, chess::Square kingSquare_White, chess::Square kingSquare_Black);
+
+    int32_t Evaluate(chess::Color side);
+
+    void Benchmark();
+
+    void print_n_accumulator_inputs(const Accumulator &accumulator, size_t N) {
+        for (size_t i = 0; i < N; i++) {
+            std::cout << accumulator.white[i] << ", ";
+        }
+
+        std::cout << std::endl;
+
+        for (size_t i = 0; i < N; i++) {
+            std::cout << accumulator.black[i] << ", ";
+        }
+
+        std::cout << std::endl;
+    }
+
+    void print_indexes(const chess::Board &board, const chess::PieceType pt, const chess::Square sq,
+                       chess::Square kingSquare) {
+        std::cout << "W [" << int(pt) << ", " << int(board.at(sq).color()) << ", " << sq
+                  << "  ]: " << index(pt, board.at(sq).color(), sq, chess::Color::WHITE, kingSquare) << "\n";
+        std::cout << "B [" << int(pt) << ", " << int(board.at(sq).color()) << ", " << sq
+                  << "  ]: " << index(pt, board.at(sq).color(), sq, chess::Color::BLACK, kingSquare) << "\n";
+    }
+};
+
+void Init(const std::string &file_name);
+
+} // namespace NNUE

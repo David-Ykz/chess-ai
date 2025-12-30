@@ -5,8 +5,8 @@ perft:
 	bin/perft
 
 unit:
-	g++ $(CFLAGS) -o bin/unit test/unit.cpp src/search.cpp
+	g++ $(CFLAGS) -o bin/unit test/unit.cpp src/chess.cpp src/search.cpp src/nnue.cpp
 	bin/unit
 
 uci:
-	g++ $(CFLAGS) -o bin/uci src/uci.cpp src/search.cpp
+	g++ $(CFLAGS) -o bin/uci src/uci.cpp src/chess.cpp src/search.cpp src/nnue.cpp

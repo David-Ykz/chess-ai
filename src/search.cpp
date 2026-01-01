@@ -1,9 +1,5 @@
 #include "../include/search.h"
 
-void Search::setAllottedTime(uint64_t allottedTime) {
-    thinkingTimeMs = allottedTime;
-}
-
 void Search::orderMoves(Movelist &moves) {
     for (int i = 0; i < moves.size(); i++) {
         Piece victim = board.at(moves[i].to());
@@ -15,8 +11,12 @@ void Search::orderMoves(Movelist &moves) {
     });
 }
 
-void Search::orderMoves(Movelist &moves, int ply) {
+void Search::orderMoves(Movelist &moves, int ply, Move ttMove) {
     for (int i = 0; i < moves.size(); i++) {
+        if (moves[i] == ttMove) {
+            moves[i].setScore(TT_MOVE_BONUS);
+            continue;
+        }
         Piece victim = board.at(moves[i].to());
         Piece attacker = board.at(moves[i].from());
         if (victim != Piece::NONE) {
@@ -38,6 +38,9 @@ int Search::quiescence(int alpha, int beta) {
         outOfTime = checkTime();
         if (outOfTime) return 0;
     }
+
+    if (board.isRepetition()) return 0;
+
     int eval = evaluator.evaluate(board);
     if (eval >= beta) return beta;
     if (eval > alpha) alpha = eval;
@@ -69,7 +72,33 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     }
 
     // Threefold repetition
-    if (ply > 0 && board.isRepetition(1)) return 0;
+    if (ply && board.isRepetition()) {
+        return 0;
+    }
+
+    bool ttHit = false;
+    TTEntry *entry = tt.probe(board.hash(), ttHit);
+    const int ttScore = ttHit ? convertTTScore(entry->score, ply) : 0;
+    bool isPVNode = (beta - alpha) > 1;
+
+    if (ttHit && ply && entry->depth >= depth && ttScore != INFINITY) {
+        ttHits++;
+        if (entry->flag == EXACT) {
+            return ttScore;
+        } else if (entry->flag == BETA && ttScore >= beta) {
+            return beta;
+        } else if (entry->flag == ALPHA && ttScore <= alpha) {
+            return alpha;
+        }
+
+        // if (entry->bound == LOWER_BOUND && ttScore >= beta ||
+        //     entry->bound == UPPER_BOUND && ttScore <= alpha ||
+        //     entry->bound == EXACT) {
+        //     return ttScore;
+        // }
+    }
+
+
 
     // Null move pruning
     bool inCheck = board.inCheck();
@@ -86,7 +115,10 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     if (moves.size() == 0) return inCheck ? -(INFINITY - ply) : 0;
 
     int bestEval = -INFINITY;
-    orderMoves(moves, ply);
+    int oldAlpha = alpha;
+    Move bestMove = Move();
+    orderMoves(moves, ply, ttHit ? entry->move : Move());
+    tt.prefetch(board.hash());
 
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
@@ -109,7 +141,11 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
         if (outOfTime) return 0;
         if (eval > bestEval) {
             bestEval = eval;
-            if (ply == 0) rootMove = move;
+            bestMove = move;
+            if (ply == 0) {
+                rootMove = move;
+                rootEval = eval;
+            }
 
             if (eval > alpha) {
                 alpha = eval;
@@ -125,6 +161,14 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
         }
     }
 
+    Flag flag = ALPHA;
+    if (bestEval >= beta) {
+        flag = BETA;
+    } else if (alpha != oldAlpha) {
+        flag = EXACT;
+    }
+    tt.store(board.hash(), depth, convertTTScore(bestEval, ply), -1, flag, bestMove);
+
     return bestEval;
 }
 
@@ -132,10 +176,28 @@ SearchResult Search::negamax(int depth) {
     SearchResult result;
     numNodes = 0;
     uint64_t start = tick();
-    result.eval = negamax(0, depth, -INFINITY, INFINITY);
+    // Aspiration windows
+    // bool needsFullSearch = true;
+    // if (depth > 1) {
+    //     for (int window = 4; window <= 1024; window <<= 4) {
+    //         int alpha = result.eval - window;
+    //         int beta = result.eval + window;
+    //         result.eval = negamax(0, depth, alpha, beta);
+    //         if (alpha <= result.eval && result.eval <= beta) {
+    //             needsFullSearch = false;
+    //             break;
+    //         }
+    //     }
+    // }
+    // if (needsFullSearch) {
+        negamax(0, depth, -INFINITY, INFINITY);
+    // }
+
+
     uint64_t stop = tick();
     result.timeTakenMs = stop - start;
     result.bestMove = rootMove;
+    result.eval = rootEval;
     result.numNodes = numNodes;
     result.depth = depth;
     return result;
@@ -145,7 +207,9 @@ SearchResult Search::search() {
     SearchResult result;
     double totalTime = 0;
     uint64_t totalNodes = 0;
+    ttHits = 0;
     rootMove = Move();
+    rootEval = -INFINITY;
     outOfTime = false;
     startTime = tick();
     stopTime = startTime + thinkingTimeMs;
@@ -156,18 +220,13 @@ SearchResult Search::search() {
         totalTime += res.timeTakenMs;
         if (debug) {
             sendDebugInfo(res);
-            // cerr << res << endl;
         }
-        if (outOfTime) break;
         result = res;
+        if (outOfTime) break;
     }
     result.timeTakenMs = totalTime;
     result.numNodes = totalNodes;
-
-    // if (debug) {
-        // sendDebugInfo(result);
-        // cerr << "Overall Search - " << result << endl;
-    // }
+    // cout << ttHits << " - " << tt.numCollisions << endl;
 
     return result;
 }

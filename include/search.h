@@ -1,4 +1,5 @@
 #include "eval.h"
+#include "transposition_table.h"
 #include <vector>
 #include <chrono>
 #include <iostream>
@@ -28,12 +29,20 @@ class Search {
 private:
     Board board;
     Eval evaluator;
-    uint64_t numNodes;
+    TranspositionTable &tt;
     Move rootMove;
+    int rootEval;
+
     Move killerMoves[64][2];
     const int killerBonuses[2] = {8000, 4000};
-    const int INFINITY = 99000;
-    uint64_t startTime, stopTime, thinkingTimeMs;
+
+    const int INFINITY = 32000;
+    const int MAX_PLY = 128;
+    const uint64_t TIME_MARGIN = 50;
+    const string NNUE_NAME = "nets/nn-c288c895ea92.nnue";
+    const int TT_MOVE_BONUS = 16000;
+
+    uint64_t numNodes, ttHits, startTime, stopTime, thinkingTimeMs;
     const bool debug = true;
     bool outOfTime = false;
 
@@ -46,44 +55,38 @@ private:
     inline int log2(uint32_t x) {
         return 31 - __builtin_clz(x);
     }
+    inline int convertTTScore(int score, int ply) {
+        if (score >= INFINITY - MAX_PLY) {
+            return score - ply;
+        } else if (score <= -INFINITY + MAX_PLY) {
+            return score + ply;
+        }
+        return score;
+    }
+    
+    void init() {
+        NNUE::Init(NNUE_NAME);
+        for (int i = 0; i < 64; i++) {
+            killerMoves[i][0] = Move();
+            killerMoves[i][1] = Move();
+        }
+    }
+
 
 
 
 public:
-    Search() {
-        NNUE::Init("nets/nn-c288c895ea92.nnue");
-        board = Board(evaluator.nnue, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        for (int i = 0; i < 64; i++) {
-            killerMoves[i][0] = Move();
-            killerMoves[i][1] = Move();
-        }
-    }
-    Search(string_view fen, uint64_t allottedTime) {
-        NNUE::Init("nets/nn-c288c895ea92.nnue");
+    Search(string_view fen, uint64_t allottedTime, TranspositionTable &tt) : tt(tt) {
+        init();
         board = Board(evaluator.nnue, fen);
-        thinkingTimeMs = allottedTime;
-        for (int i = 0; i < 64; i++) {
-            killerMoves[i][0] = Move();
-            killerMoves[i][1] = Move();
-        }
-    }
-    Search(Board &externalBoard, uint64_t allottedTime) {
-        board = externalBoard;
-        thinkingTimeMs = allottedTime;
-        for (int i = 0; i < 64; i++) {
-            killerMoves[i][0] = Move();
-            killerMoves[i][1] = Move();
-        }
-        NNUE::Init("nets/nn-c288c895ea92.nnue");
+        thinkingTimeMs = allottedTime - TIME_MARGIN;
     }
 
-    void setAllottedTime(uint64_t allottedTime);
     void orderMoves(Movelist& moves);
-    void orderMoves(Movelist& moves, int ply);
+    void orderMoves(Movelist& moves, int ply, Move move);
     int quiescence(int alpha, int beta);
     int negamax(int ply, int depth, int alpha, int beta);
     SearchResult negamax(int depth);
     SearchResult search();
     void sendDebugInfo(SearchResult &result);
-
 };

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <chrono>
 using namespace std;
-#define NUM_TESTS 17
+#define NUM_TESTS 21
 
 struct TestCase {
     string fen;
@@ -14,7 +14,8 @@ struct TestCase {
 
 bool runTest(string fen, uint64_t allottedTime, int expectedEval, Square expectedFrom, Square expectedTo) {
     cout << "Fen: " << fen << endl;
-    Search searcher = Search(fen, allottedTime);
+    TranspositionTable tt;
+    Search searcher = Search(fen, allottedTime, tt);
     SearchResult result = searcher.search();
     Square from = result.bestMove.from();
     Square to = result.bestMove.to();
@@ -60,20 +61,20 @@ TestCase NNUETestCases[NUM_TESTS] = {
     {"r3k3/8/8/8/8/8/R7/4K3 b - - 0 1", 100, 850, Square("a8"), Square("a2")},
     {"rnb3k1/ppp3pp/4p3/3p4/3PPR1q/3B2n1/PPP3P1/RNBQ2K1 b - - 4 13", 100, 1100, Square("h4"), Square("h1")},
     {"r1b1r1k1/pp2np2/3q2p1/2p1B2p/3n3P/P2P1NP1/1P2PPB1/1R1QK2R b K - 4 15", 100, 500, Square("d4"), Square("f3")},
-    {"3n1n2/1p2rpk1/p5p1/2PP3p/PP5P/3Q1qP1/5P2/1R1R2K1 b - - 2 30", 2000, 500, Square("e7"), Square("e1")},
+    {"3n1n2/1p2rpk1/p5p1/2PP3p/PP5P/3Q1qP1/5P2/1R1R2K1 b - - 2 30", 2000, 650, Square("e7"), Square("e1")},
     {"7k/1p4b1/pQ5P/5b2/4p3/1P6/P3PP1P/2Bq1BK1 b - - 0 29", 500, 650, Square("f5"), Square("h3")},
     {"8/p5k1/2p1rp2/5p1p/P2Pq3/5N1P/1R2nPPK/4Q3 b - - 11 34", 500, 450, Square("e4"), Square("f4")},
     {"rn1q1rk1/pp2bn1p/4Q1pP/4Np2/3p4/3B2P1/PPP2P2/R1B1K2R b KQ - 2 15", 100, 400, Square("d8"), Square("a5")},
-    {"2r1k1r1/pp3p1Q/4b3/q7/2P5/2P5/P4PPP/1K1R1B1R b - - 0 19", 500, 700, Square("e6"), Square("f5")},
+    {"2r1k1r1/pp3p1Q/4b3/q7/2P5/2P5/P4PPP/1K1R1B1R b - - 0 19", 500, 1000, Square("e6"), Square("f5")},
     {"1k1b4/8/2bp4/pp1N1p1p/2P1rPp1/1P2R3/P5PP/5R1K b - - 1 34", 500, 600, Square("c6"), Square("d5")},
     {"2kr3r/2p1q2p/6p1/5p2/Q2b1P2/4P3/PPPB3P/R3R2K b - - 3 25", 500, 1200, Square("e7"), Square("e4")},
     {"2r5/8/7k/4N1p1/5p1p/P4R1P/5RPK/r7 b - - 5 46", 500, 650, Square("c8"), Square("c1")},
+    {"3r2k1/Q2P1p2/1p4pp/5q2/7P/P1p3P1/5P2/3R2K1 b - - 0 32", 500, 600, Square("c3"), Square("c2")},
+    {"4K3/5P2/8/1k6/3pP3/R1r5/P7/8 b - - 0 56", 500, 300, Square("c3"), Square("a3")},  
+    // {"8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - ", 3600000, 900, Square("a1"), Square("b1")},
+    {"8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - ", 1000, 900, Square("a1"), Square("b1")},
+    {"r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 5", 1000, 30, Square("e1"), Square("g1")},
 };
-
-
-// TODO:
-// 3r2k1/Q2P1p2/1p4pp/5q2/7P/P1p3P1/5P2/3R2K1 b - - 0 32
-// 4K3/5P2/8/1k6/3pP3/R1r5/P7/8 b - - 0 56
 
 int main () {
     int numTestsPass = 0;

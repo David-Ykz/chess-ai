@@ -71,7 +71,6 @@ TestCase NNUETestCases[NUM_TESTS] = {
     {"2r5/8/7k/4N1p1/5p1p/P4R1P/5RPK/r7 b - - 5 46", 500, 650, Square("c8"), Square("c1")},
     {"3r2k1/Q2P1p2/1p4pp/5q2/7P/P1p3P1/5P2/3R2K1 b - - 0 32", 500, 600, Square("c3"), Square("c2")},
     {"4K3/5P2/8/1k6/3pP3/R1r5/P7/8 b - - 0 56", 500, 300, Square("c3"), Square("a3")},  
-    // {"8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - ", 3600000, 900, Square("a1"), Square("b1")},
     {"8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - ", 1000, 900, Square("a1"), Square("b1")},
     {"r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 5", 1000, 30, Square("e1"), Square("g1")},
 };

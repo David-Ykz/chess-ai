@@ -1,5 +1,6 @@
 #include "../include/search.h"
 
+// Order capture moves
 void Search::orderMoves(Movelist &moves) {
     for (int i = 0; i < moves.size(); i++) {
         Piece victim = board.at(moves[i].to());
@@ -76,13 +77,12 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
         return 0;
     }
 
+    // Check transposition table
     bool ttHit = false;
     TTEntry *entry = tt.probe(board.hash(), ttHit);
     const int ttScore = ttHit ? convertTTScore(entry->score, ply) : 0;
-    bool isPVNode = (beta - alpha) > 1;
 
     if (ttHit && ply && entry->depth >= depth && ttScore != INFINITY) {
-        ttHits++;
         if (entry->flag == EXACT) {
             return ttScore;
         } else if (entry->flag == BETA && ttScore >= beta) {
@@ -90,15 +90,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
         } else if (entry->flag == ALPHA && ttScore <= alpha) {
             return alpha;
         }
-
-        // if (entry->bound == LOWER_BOUND && ttScore >= beta ||
-        //     entry->bound == UPPER_BOUND && ttScore <= alpha ||
-        //     entry->bound == EXACT) {
-        //     return ttScore;
-        // }
     }
-
-
 
     // Null move pruning
     bool inCheck = board.inCheck();
@@ -161,13 +153,14 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
         }
     }
 
+    // Store position into transposition table
     Flag flag = ALPHA;
     if (bestEval >= beta) {
         flag = BETA;
     } else if (alpha != oldAlpha) {
         flag = EXACT;
     }
-    tt.store(board.hash(), depth, convertTTScore(bestEval, ply), -1, flag, bestMove);
+    tt.store(board.hash(), depth, convertTTScore(bestEval, ply), flag, bestMove);
 
     return bestEval;
 }
@@ -226,7 +219,6 @@ SearchResult Search::search() {
     }
     result.timeTakenMs = totalTime;
     result.numNodes = totalNodes;
-    // cout << ttHits << " - " << tt.numCollisions << endl;
 
     return result;
 }

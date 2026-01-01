@@ -51,9 +51,8 @@ void goCommand(Board& board, std::istringstream& iss) {
 
     Search searcher(board.getFen(), allottedTime, tt);
     SearchResult result = searcher.search();
-    tt.currentAge++;
     cout << "bestmove " << uci::moveToUci(result.bestMove) << endl;
-    // tt.clear();
+    tt.currentAge++;
 }
 
 void uciLoop() {

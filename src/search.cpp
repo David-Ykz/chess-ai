@@ -134,6 +134,7 @@ int Search::quiescence(int alpha, int beta) {
     orderMoves(moves);
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
+        if (move.score() < GOOD_CAPTURE_BONUS && i > 0) continue;
         board.makeMove(move, evaluator.nnue);
         int eval = -quiescence(-beta, -alpha);
         board.unmakeMove(move, evaluator.nnue);

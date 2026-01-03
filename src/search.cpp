@@ -105,6 +105,8 @@ void Search::orderMoves(Movelist &moves, int ply, Move ttMove) {
             moves[i].setScore(killerBonuses[0]);
         } else if (ss[ply].killers[1] == moves[i]) {
             moves[i].setScore(killerBonuses[1]);
+        } else if (ply && counters[board.sideToMove()][ss[ply - 1].currentMove.from().index()][ss[ply - 1].currentMove.to().index()] == moves[i]) {
+            moves[i].setScore(COUNTER_BONUS);
         } else {
             moves[i].setScore(history[board.sideToMove()][moves[i].from().index()][moves[i].to().index()]);
         }
@@ -229,6 +231,12 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
                         if (ss[ply].killers[0] != move) {
                             ss[ply].killers[1] = ss[ply].killers[0];
                             ss[ply].killers[0] = move;
+                        }
+                        if (ply) {
+                            Move prevMove = ss[ply - 1].currentMove;
+                            if (prevMove != Move()) {
+                                counters[~board.sideToMove()][prevMove.from().index()][prevMove.to().index()] = move;
+                            }
                         }
 
                         history[board.sideToMove()][move.from().index()][move.to().index()] = min(MAX_HISTORY_BONUS, history[board.sideToMove()][move.from().index()][move.to().index()] + depth * depth);

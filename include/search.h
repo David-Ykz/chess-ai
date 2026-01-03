@@ -43,6 +43,7 @@ private:
 
     SearchStack ss[128];
     int16_t history[2][64][64];
+    Move counters[2][64][64];
 
     const int INFINITY = 32000;
     const int MAX_PLY = 128;
@@ -51,6 +52,7 @@ private:
     const int TT_MOVE_BONUS = 16000;
     const int GOOD_CAPTURE_BONUS = 10000;
     const int MAX_HISTORY_BONUS = 3000;
+    const int COUNTER_BONUS = 8500;
 
     uint64_t numNodes, ttHits, startTime, stopTime, thinkingTimeMs;
     const bool debug = true;
@@ -77,6 +79,7 @@ private:
     void init() {
         NNUE::Init(NNUE_NAME);
         memset(history, 0, sizeof(int16_t) * 2 * 64 * 64);
+        memset(counters, 0, sizeof(Move) * 2 * 64 * 64);
     }
 
 

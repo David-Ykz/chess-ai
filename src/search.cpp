@@ -105,8 +105,8 @@ void Search::orderMoves(Movelist &moves, int ply, Move ttMove) {
             moves[i].setScore(killerBonuses[0]);
         } else if (ss[ply].killers[1] == moves[i]) {
             moves[i].setScore(killerBonuses[1]);
-        // } else {
-        //     moves[i].setScore(history[board.sideToMove()][moves[i].from().index()][moves[i].to().index()]);
+        } else {
+            moves[i].setScore(history[board.sideToMove()][moves[i].from().index()][moves[i].to().index()]);
         }
     }
     sort(moves.begin(), moves.end(), [](const auto& a, const auto& b) {
@@ -231,7 +231,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
                             ss[ply].killers[0] = move;
                         }
 
-                        // history[board.sideToMove()][move.from().index()][move.to().index()] += depth * depth;
+                        history[board.sideToMove()][move.from().index()][move.to().index()] = min(MAX_HISTORY_BONUS, history[board.sideToMove()][move.from().index()][move.to().index()] + depth * depth);
                     }
                     break;
                 };

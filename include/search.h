@@ -39,7 +39,6 @@ private:
     Move rootMove;
     int rootEval;
 
-    Move killerMoves[64][2];
     const int killerBonuses[2] = {8000, 4000};
 
     SearchStack ss[128];
@@ -51,6 +50,7 @@ private:
     const string NNUE_NAME = "nets/nn-c288c895ea92.nnue";
     const int TT_MOVE_BONUS = 16000;
     const int GOOD_CAPTURE_BONUS = 10000;
+    const int MAX_HISTORY_BONUS = 3000;
 
     uint64_t numNodes, ttHits, startTime, stopTime, thinkingTimeMs;
     const bool debug = true;
@@ -76,10 +76,7 @@ private:
     
     void init() {
         NNUE::Init(NNUE_NAME);
-        for (int i = 0; i < 64; i++) {
-            killerMoves[i][0] = Move();
-            killerMoves[i][1] = Move();
-        }
+        memset(history, 0, sizeof(int16_t) * 2 * 64 * 64);
     }
 
 

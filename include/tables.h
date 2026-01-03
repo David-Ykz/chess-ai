@@ -1,4 +1,4 @@
-// MVV LVA scores taken from Rice
+// MVV LVA scores and piece values taken from Rice
 constexpr int mvv_lva[12][12] = {
     105, 205, 305, 405, 505, 605, 105, 205, 305, 405, 505, 605, 104, 204, 304,
     404, 504, 604, 104, 204, 304, 404, 504, 604, 103, 203, 303, 403, 503, 603,
@@ -12,6 +12,8 @@ constexpr int mvv_lva[12][12] = {
     402, 502, 602, 101, 201, 301, 401, 501, 601, 101, 201, 301, 401, 501, 601,
     100, 200, 300, 400, 500, 600, 100, 200, 300, 400, 500, 600
 };
+constexpr int pieceValues[7] = { 93, 308, 346, 521, 994, 20000, 0};
+
 
 // PST values and piece weights taken from Pesto
 inline constexpr int gamePhaseIncrement[14] = {0, 1, 1, 2, 4, 0, 0, 0, 0, 1, 1, 2, 4, 0};

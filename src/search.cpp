@@ -1,11 +1,90 @@
 #include "../include/search.h"
 
+bool Search::see(Move move, int threshold) {
+    Square fromSquare = move.from();
+    Square toSquare   = move.to();
+
+    PieceType target = board.at<PieceType>(toSquare);
+
+    if (move.typeOf() == Move::ENPASSANT) {
+        target = PieceType::PAWN;
+    }
+
+    int value = pieceValues[target] - threshold;
+
+    if (value < 0) return false;
+
+    PieceType attacker = board.at<PieceType>(fromSquare);
+    value -= pieceValues[attacker];
+
+    if (value >= 0) return true;
+
+    Bitboard occupied = board.occ();
+    occupied ^= Bitboard::fromSquare(fromSquare);
+    occupied |= Bitboard::fromSquare(toSquare);
+
+    Bitboard attackers = attacks::attackers(board, Color::WHITE, toSquare) | attacks::attackers(board, Color::BLACK, toSquare);    
+    attackers &= occupied;
+
+    Bitboard queens  = board.pieces(PieceType::QUEEN);
+    Bitboard bishops = board.pieces(PieceType::BISHOP) | queens;
+    Bitboard rooks   = board.pieces(PieceType::ROOK)   | queens;
+
+    Color st = ~board.at(fromSquare).color();
+
+    while (true) {
+        attackers &= occupied;
+
+        Bitboard myAttackers = attackers & board.us(st);
+
+        if (myAttackers.empty()) {
+            break;
+        }
+
+        PieceType pt = PieceType::NONE;
+        
+        const PieceType types[] = {PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP, PieceType::ROOK, PieceType::QUEEN, PieceType::KING};
+        
+        for (PieceType type : types) {
+            if ((myAttackers & board.pieces(type)).count()) {
+                pt = type;
+                break;
+            }
+        }
+
+        st = ~st;
+        
+        value = -value - 1 - pieceValues[pt];
+
+        if (value >= 0) {
+            if (pt == PieceType::KING && (attackers & board.us(st))) {
+                st = ~st; 
+            }
+            break;
+        }
+
+        Bitboard specificAttackerBB = myAttackers & board.pieces(pt);
+        Square attackerSq = Square(specificAttackerBB.lsb());
+        
+        occupied ^= Bitboard::fromSquare(attackerSq);
+
+        if (pt == PieceType::PAWN || pt == PieceType::BISHOP || pt == PieceType::QUEEN)
+            attackers |= attacks::bishop(toSquare, occupied) & bishops;
+        
+        if (pt == PieceType::ROOK || pt == PieceType::QUEEN)
+            attackers |= attacks::rook(toSquare, occupied) & rooks;
+    }
+
+    return st != board.at(fromSquare).color();
+}
+
+
 // Order capture moves
 void Search::orderMoves(Movelist &moves) {
     for (int i = 0; i < moves.size(); i++) {
         Piece victim = board.at(moves[i].to());
         Piece attacker = board.at(moves[i].from());
-        moves[i].setScore(mvv_lva[attacker][victim]);
+        moves[i].setScore(mvv_lva[attacker][victim] + GOOD_CAPTURE_BONUS * see(moves[i], -107));
     }
     sort(moves.begin(), moves.end(), [](const auto& a, const auto& b) {
         return a.score() > b.score();
@@ -21,11 +100,13 @@ void Search::orderMoves(Movelist &moves, int ply, Move ttMove) {
         Piece victim = board.at(moves[i].to());
         Piece attacker = board.at(moves[i].from());
         if (victim != Piece::NONE) {
-            moves[i].setScore(mvv_lva[attacker][victim]);
-        } else if (killerMoves[ply][0] == moves[i]) {
+            moves[i].setScore(mvv_lva[attacker][victim] + GOOD_CAPTURE_BONUS * see(moves[i], -107));
+        } else if (ss[ply].killers[0] == moves[i]) {
             moves[i].setScore(killerBonuses[0]);
-        } else if (killerMoves[ply][1] == moves[i]) {
+        } else if (ss[ply].killers[1] == moves[i]) {
             moves[i].setScore(killerBonuses[1]);
+        // } else {
+        //     moves[i].setScore(history[board.sideToMove()][moves[i].from().index()][moves[i].to().index()]);
         }
     }
     sort(moves.begin(), moves.end(), [](const auto& a, const auto& b) {
@@ -114,6 +195,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
 
     for (int i = 0; i < moves.size(); i++) {
         Move move = moves[i];
+        ss[ply].currentMove = move;
         board.makeMove(move, evaluator.nnue);
         int eval;
 
@@ -143,9 +225,13 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
                 alpha = eval;
                 // Fail soft
                 if (alpha >= beta) {
-                    if (!board.isCapture(move) && killerMoves[ply][0] != move) {
-                        killerMoves[ply][1] = killerMoves[ply][0];
-                        killerMoves[ply][0] = move;
+                    if (!board.isCapture(move)) {
+                        if (ss[ply].killers[0] != move) {
+                            ss[ply].killers[1] = ss[ply].killers[0];
+                            ss[ply].killers[0] = move;
+                        }
+
+                        // history[board.sideToMove()][move.from().index()][move.to().index()] += depth * depth;
                     }
                     break;
                 };

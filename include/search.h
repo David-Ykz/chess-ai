@@ -24,6 +24,12 @@ inline ostream& operator<<(ostream& os, const SearchResult& res) {
     return os;
 }
 
+struct SearchStack {
+    Move currentMove = Move();
+    Move killers[2] = {Move(), Move()};
+};
+
+
 
 class Search {
 private:
@@ -36,11 +42,15 @@ private:
     Move killerMoves[64][2];
     const int killerBonuses[2] = {8000, 4000};
 
+    SearchStack ss[128];
+    int16_t history[2][64][64];
+
     const int INFINITY = 32000;
     const int MAX_PLY = 128;
     const uint64_t TIME_MARGIN = 50;
     const string NNUE_NAME = "nets/nn-c288c895ea92.nnue";
     const int TT_MOVE_BONUS = 16000;
+    const int GOOD_CAPTURE_BONUS = 10000;
 
     uint64_t numNodes, ttHits, startTime, stopTime, thinkingTimeMs;
     const bool debug = true;
@@ -82,6 +92,7 @@ public:
         thinkingTimeMs = allottedTime - TIME_MARGIN;
     }
 
+    bool see(Move move, int threshold);
     void orderMoves(Movelist& moves);
     void orderMoves(Movelist& moves, int ply, Move move);
     int quiescence(int alpha, int beta);

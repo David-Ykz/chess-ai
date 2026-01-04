@@ -165,6 +165,7 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     bool ttHit = false;
     TTEntry *entry = tt.probe(board.hash(), ttHit);
     const int ttScore = ttHit ? convertTTScore(entry->score, ply) : 0;
+    bool isPVNode = (beta - alpha) > 1;
 
     if (ttHit && ply && entry->depth >= depth && ttScore != INFINITY) {
         if (entry->flag == EXACT) {
@@ -189,6 +190,10 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     movegen::legalmoves(moves, board);
 
     if (moves.size() == 0) return inCheck ? -(INFINITY - ply) : 0;
+
+    int staticEval = evaluator.evaluate(board);
+    int margin = 160 * depth;
+    if (!isPVNode && !inCheck && !ttHit && staticEval >= beta + margin) return staticEval;
 
     int bestEval = -INFINITY;
     int oldAlpha = alpha;

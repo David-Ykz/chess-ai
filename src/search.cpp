@@ -192,8 +192,15 @@ int Search::negamax(int ply, int depth, int alpha, int beta) {
     if (moves.size() == 0) return inCheck ? -(INFINITY - ply) : 0;
 
     int staticEval = evaluator.evaluate(board);
+
+    // Reverse futility pruning
     int margin = 160 * depth;
     if (!isPVNode && !inCheck && !ttHit && staticEval >= beta + margin) return staticEval;
+
+    // Futility pruning
+    if (depth <= 2 && !inCheck && staticEval + 2 * margin < alpha) {
+        return quiescence(alpha, beta);
+    }
 
     int bestEval = -INFINITY;
     int oldAlpha = alpha;

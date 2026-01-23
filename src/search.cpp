@@ -166,7 +166,7 @@ int negamax(SearchThread &st, int ply, int depth, int alpha, int beta) {
     }
 
     // Threefold repetition
-    if (ply && st.board.isRepetition()) return 0;
+    if (ply && st.board.isRepetition(1)) return 0;
 
     // Check transposition table for this position
     bool ttHit = false;

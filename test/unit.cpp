@@ -15,10 +15,9 @@ struct TestCase {
 bool runTest(string fen, uint64_t allottedTime, int expectedEval, Square expectedFrom, Square expectedTo) {
     cout << "Fen: " << fen << endl;
     TranspositionTable tt;
-    Search searcher = Search(fen, allottedTime, tt);
-    SearchResult result = searcher.search();
-    Square from = result.bestMove.from();
-    Square to = result.bestMove.to();
+    SearchResult result = search(fen, allottedTime, tt);
+    Square from = result.move.from();
+    Square to = result.move.to();
     if (abs(result.eval - expectedEval) > 100) {
         cout << "FAIL - Expected: " << expectedFrom << expectedTo << ", " << expectedEval << " | Actual: " << from << to << ", " << result.eval << endl;
         return false;

@@ -6,7 +6,7 @@
 #include <atomic>
 #include "../include/search.h"
 
-TranspositionTable tt = TranspositionTable(64);
+TranspositionTable tt = TranspositionTable(256);
 
 void positionCommand(Board &board, istringstream &iss) {
     std::string token, fen;
@@ -21,9 +21,9 @@ void positionCommand(Board &board, istringstream &iss) {
 }
 
 void goCommand(Board& board, std::istringstream& iss) {
-    int wtime, btime, winc, binc;
-    int movestogo;
-    int movetime;
+    int wtime, btime, winc, binc = 0;
+    int movestogo = 0;
+    int movetime = 0;
 
     std::string token;
     while (iss >> token) {
@@ -49,9 +49,9 @@ void goCommand(Board& board, std::istringstream& iss) {
         allottedTime = max(timeLeft / 20 + increment / 2, increment);
     }
 
-    Search searcher(board.getFen(), allottedTime, tt);
-    SearchResult result = searcher.search();
-    cout << "bestmove " << uci::moveToUci(result.bestMove) << endl;
+    SearchResult result = search(board.getFen(), allottedTime, tt);
+
+    cout << "bestmove " << uci::moveToUci(result.move) << endl;
     tt.currentAge++;
 }
 

@@ -280,10 +280,39 @@ int negamax(SearchThread &st, int ply, int depth, int alpha, int beta) {
     return bestEval;
 }
 
+/* Iterative deepening, also thread entry point */
 void iterativeDeepening(SearchThread &st) {
+    int prevEval = 0;
     for (int depth = st.threadID + 1; depth < MAX_PLY; depth++) {
         uint64_t startTime = tick();
-        negamax(st, 0, depth, -INFINITY, INFINITY);
+        bool needsFullSearch = true;
+        int delta = 16;
+
+        if (depth > 3) {
+            int alpha = max(-INFINITY, prevEval - delta);
+            int beta = min(INFINITY, prevEval + delta);
+            
+            // Aspiration windows
+            while (true) {
+                int eval = negamax(st, 0, depth, alpha, beta);
+                if (st.search.outOfTime) break;
+
+                if (eval <= alpha) {
+                    beta = (alpha + beta) / 2;
+                    alpha = max(-INFINITY, prevEval - delta);
+                } else if (eval >= beta) {
+                    alpha = (alpha + beta) / 2;
+                    beta = min(INFINITY, prevEval + delta);
+                } else {
+                    prevEval = eval;
+                    break;
+                }
+                delta <<= 2;
+            }
+        } else {
+            prevEval = negamax(st, 0, depth, -INFINITY, INFINITY);
+        }
+
         if (!st.threadID) {
             uint64_t stopTime = tick();
             printInfo(depth, stopTime - startTime, st.rootEval, st.rootMove);
@@ -292,6 +321,7 @@ void iterativeDeepening(SearchThread &st) {
     }
 }
 
+/* Chess engine endpoint */
 SearchResult search(string fen, uint64_t allottedTime, TranspositionTable &tt) {
     SearchStatus search;
     search.startTime = tick();
@@ -306,7 +336,6 @@ SearchResult search(string fen, uint64_t allottedTime, TranspositionTable &tt) {
     vector<thread> threads;
     vector<unique_ptr<SearchThread>> searchThreads;
 
-    // cout << "pre" << endl;
     for (int i = 0; i < NUM_THREADS; i++) {
         unique_ptr<SearchThread> searchThread = make_unique<SearchThread>(fen, tt, search, i);
         searchThreads.push_back(move(searchThread));
@@ -314,80 +343,15 @@ SearchResult search(string fen, uint64_t allottedTime, TranspositionTable &tt) {
     }
 
     iterativeDeepening(*searchThreads[0]);
-    // cout << "iter" << endl;
 
     for (int i = 1; i < NUM_THREADS; i++) {
         threads[i - 1].join();
     }
 
-    // cout << "joined" << endl;
-    // for (int i = 0; i < NUM_THREADS; i++) {
-    //     cout << "Thread " << searchThreads[i]->threadID << ": ";
-    //     cout << uci::moveToUci(searchThreads[i]->rootMove);
-    //     cout << ", " << searchThreads[i]->rootEval << endl;
-    // }
     search.result = {searchThreads[0]->rootMove, searchThreads[0]->rootEval};
     return search.result;
 }
 
-
-
-
-// SearchResult negamax(int depth) {
-//     SearchResult result;
-//     st.search.numNodes = 0;
-//     uint64_t start = tick();
-//     // Aspiration windows
-//     // bool needsFullSearch = true;
-//     // if (depth > 1) {
-//     //     for (int window = 4; window <= 1024; window <<= 4) {
-//     //         int alpha = result.eval - window;
-//     //         int beta = result.eval + window;
-//     //         result.eval = negamax(0, depth, alpha, beta);
-//     //         if (alpha <= result.eval && result.eval <= beta) {
-//     //             needsFullSearch = false;
-//     //             break;
-//     //         }
-//     //     }
-//     // }
-//     // if (needsFullSearch) {
-//         negamax(0, depth, -INFINITY, INFINITY);
-//     // }
-
-
-//     uint64_t stop = tick();
-//     result.timeTakenMs = stop - start;
-//     result.bestMove = rootMove;
-//     result.eval = rootEval;
-//     result.st.search.numNodes = st.search.numNodes;
-//     result.depth = depth;
-//     return result;
-// }
-
-// SearchResult search() {
-//     SearchResult result;
-//     double totalTime = 0;
-//     uint64_t totalNodes = 0;
-//     ttHits = 0;
-//     rootMove = Move();
-//     rootEval = -INFINITY;
-//     outOfTime = false;
-//     startTime = tick();
-//     stopTime = startTime + thinkingTimeMs;
-//     // Iterative deepening
-//     for (int i = 1; i < 128; i++) {
-//         SearchResult res = negamax(i);
-//         totalNodes += res.st.search.numNodes;
-//         totalTime += res.timeTakenMs;
-//         sendDebugInfo(res);
-//         result = res;
-//         if (outOfTime) break;
-//     }
-//     result.timeTakenMs = totalTime;
-//     result.st.search.numNodes = totalNodes;
-
-//     return result;
-// }
 
 void printInfo(int depth, uint64_t time, int eval, Move move) {
     cout << "info depth " << depth;

@@ -188,7 +188,7 @@ int negamax(SearchThread &st, int ply, int depth, int alpha, int beta) {
     bool inCheck = st.board.inCheck();
     if (!inCheck && depth >= 3) {
         st.board.makeNullMove();
-        int score = -negamax(st, ply + 1, depth - 3, -beta, -beta + 1);
+        int score = -negamax(st, ply + 1, depth/2 - 1, -beta, -beta + 1);
         st.board.unmakeNullMove();
         if (score >= beta) return score;
     }

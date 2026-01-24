@@ -3,9 +3,9 @@
 constexpr int INFINITY = 32000;
 constexpr int MAX_PLY = 128;
 
-constexpr uint64_t TIME_MARGIN = 50;
+constexpr uint64_t TIME_MARGIN = 30;
 const std::string NNUE_NAME = "nets/nn-c288c895ea92.nnue";
-constexpr int NUM_THREADS = 4;
+constexpr int NUM_THREADS = 1;
 
 // Move ordering bonuses
 constexpr int TT_MOVE_BONUS = 16000;

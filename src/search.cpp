@@ -225,7 +225,7 @@ int negamax(SearchThread &st, int ply, int depth, int alpha, int beta) {
         bool needsFullSearch = true;
         if (i > 2 && depth > 2) {
             needsFullSearch = false;
-            eval = -negamax(st, ply + 1, depth - 2, -alpha - 1, -alpha);
+            eval = -negamax(st, ply + 1, depth - reductions[min(depth, 32) - 1][min(i, 32) - 1], -alpha - 1, -alpha);
             needsFullSearch = (eval > alpha);
         }
         if (needsFullSearch) {

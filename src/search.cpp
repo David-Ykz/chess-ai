@@ -200,12 +200,11 @@ int negamax(SearchThread &st, int ply, int depth, int alpha, int beta) {
     int staticEval = st.nnue.Evaluate(st.board.sideToMove());
 
     // Reverse futility pruning
-    int margin = 160 * depth;
     bool isPVNode = (beta - alpha) > 1;
-    if (!isPVNode && !inCheck && !ttHit && staticEval >= beta + margin) return staticEval;
+    if (!isPVNode && !inCheck && !ttHit && staticEval >= beta + 120 * depth) return (beta + staticEval)/2;
 
     // Futility pruning
-    if (depth <= 2 && !inCheck && staticEval + 2 * margin < alpha) {
+    if (depth <= 2 && !inCheck && staticEval + 320 * depth < alpha) {
         return quiescence(st, alpha, beta);
     }
 

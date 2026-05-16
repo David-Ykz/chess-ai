@@ -38,4 +38,4 @@ The engine is rated at 3308 elo (blitz). This rating was calculated using [cutec
 Special thanks to
 - [Disservin](https://github.com/Disservin) for providing the move generation library
 - [rafid-dev](https://github.com/rafid-dev) for providing the NNUE model and SEE weights
-- [Nonlinear2](https://github.com/Nonlinear2/Bread-Engine), whose engine (Bread 2.0.0) was used for final rating evaluations
+- [Nonlinear2](https://github.com/Nonlinear2), whose engine (Bread 2.0.0) was used for final rating evaluations

@@ -1,4 +1,4 @@
-#include "../include/chess-library/include/chess.hpp"
+#include "../include/search.h"
 #include <iostream>
 #include <chrono>
 using namespace chess;
